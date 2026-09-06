@@ -7,7 +7,7 @@ import { useAuth } from './useAuth'
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { status } = useAuth()
   const location = useLocation()
-  if (status === 'loading') return <main className="boot-screen"><BrandMark /><Spinner label="Đang khôi phục phiên đăng nhập…" /></main>
+  if (status === 'loading') return <main className="boot-screen"><BrandMark /><Spinner label="Restoring your session…" /></main>
   if (status === 'anonymous') return <Navigate to="/login" state={{ from: location.pathname }} replace />
   return children
 }

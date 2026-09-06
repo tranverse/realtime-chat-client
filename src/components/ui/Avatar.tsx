@@ -22,7 +22,7 @@ export function Avatar({ name, src, size = 'md', online, className }: AvatarProp
   return (
     <span className={cn('avatar', `avatar--${size}`, `avatar--${color}`, className)} title={name}>
       {src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <span>{initials(name)}</span>}
-      {online !== undefined && <span className={cn('avatar__status', online && 'is-online')} aria-label={online ? 'Đang hoạt động' : 'Ngoại tuyến'} />}
+      {online !== undefined && <span className={cn('avatar__status', online && 'is-online')} aria-label={online ? 'Online' : 'Offline'} />}
     </span>
   )
 }

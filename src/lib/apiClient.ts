@@ -23,7 +23,7 @@ let refreshRequest: Promise<AuthTokens> | null = null
 
 async function refreshSession(): Promise<AuthTokens> {
   const refreshToken = tokenStore.getRefreshToken()
-  if (!refreshToken) throw new Error('Không có phiên đăng nhập để làm mới.')
+  if (!refreshToken) throw new Error('No session is available to refresh.')
 
   const response = await axios.post<ApiResponse<AuthTokens>>(`${appConfig.apiBaseUrl}/auth/refresh`, { refreshToken })
   tokenStore.set(response.data.data)

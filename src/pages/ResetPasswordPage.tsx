@@ -20,25 +20,25 @@ export function ResetPasswordPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (password.length < 6) { toast.error('Mật khẩu cần ít nhất 6 ký tự.'); return }
-    if (password !== confirmPassword) { toast.error('Mật khẩu xác nhận chưa khớp.'); return }
+    if (password.length < 6) { toast.error('Password must be at least 6 characters.'); return }
+    if (password !== confirmPassword) { toast.error('Passwords do not match.'); return }
     setLoading(true)
     try {
       await authApi.resetPassword(state!.email!, state!.resetToken!, password, confirmPassword)
-      toast.success('Mật khẩu đã được cập nhật. Bạn có thể đăng nhập.')
+      toast.success('Your password has been updated. You can sign in now.')
       navigate('/login', { replace: true })
     } catch (error) { toast.error(getErrorMessage(error)) }
     finally { setLoading(false) }
   }
 
   return (
-    <AuthLayout eyebrow="Bước cuối cùng" title="Tạo mật khẩu mới" description="Chọn mật khẩu dễ nhớ với bạn nhưng khó đoán với người khác.">
+    <AuthLayout eyebrow="One last step" title="Create a new password" description="Choose something memorable to you and hard for others to guess.">
       <form className="auth-form" onSubmit={submit}>
-        <FormField label="Mật khẩu mới" type="password" autoComplete="new-password" placeholder="Tối thiểu 6 ký tự" value={password} onChange={(event) => setPassword(event.target.value)} leading={<LockKeyhole size={17} />} />
-        <FormField label="Nhập lại mật khẩu" type="password" autoComplete="new-password" placeholder="Nhập lại mật khẩu" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} leading={<LockKeyhole size={17} />} />
-        <Button type="submit" size="lg" loading={loading}>Đổi mật khẩu</Button>
+        <FormField label="New password" type="password" autoComplete="new-password" placeholder="At least 6 characters" value={password} onChange={(event) => setPassword(event.target.value)} leading={<LockKeyhole size={17} />} />
+        <FormField label="Confirm password" type="password" autoComplete="new-password" placeholder="Repeat your password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} leading={<LockKeyhole size={17} />} />
+        <Button type="submit" size="lg" loading={loading}>Update password</Button>
       </form>
-      <Link className="back-link" to="/login">Quay lại đăng nhập</Link>
+      <Link className="back-link" to="/login">Back to sign in</Link>
     </AuthLayout>
   )
 }

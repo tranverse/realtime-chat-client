@@ -18,14 +18,14 @@ export function OAuthCallbackPage() {
     const refreshToken = params.get('refreshToken')
     const error = params.get('error')
     if (error || !accessToken || !refreshToken) {
-      toast.error('Không thể đăng nhập bằng Google.')
+      toast.error('Google sign-in could not be completed.')
       navigate('/login', { replace: true })
       return
     }
     void acceptTokens({ accessToken, refreshToken })
-      .then(() => { toast.success('Đăng nhập Google thành công.'); navigate('/', { replace: true }) })
-      .catch(() => { toast.error('Không thể hoàn tất đăng nhập.'); navigate('/login', { replace: true }) })
+      .then(() => { toast.success('Signed in with Google.'); navigate('/', { replace: true }) })
+      .catch(() => { toast.error('Sign-in could not be completed.'); navigate('/login', { replace: true }) })
   }, [acceptTokens, navigate, params])
 
-  return <main className="boot-screen"><BrandMark /><Spinner label="Đang hoàn tất đăng nhập Google…" /></main>
+  return <main className="boot-screen"><BrandMark /><Spinner label="Finishing Google sign-in…" /></main>
 }
