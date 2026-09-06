@@ -1,5 +1,4 @@
 import { format, isToday, isYesterday } from 'date-fns'
-import { vi } from 'date-fns/locale'
 import type { Conversation, UserProfile } from '../../types/api'
 
 export function getConversationPeer(conversation: Conversation, currentUserId?: string) {
@@ -19,7 +18,7 @@ export function formatConversationTime(value?: string) {
   const date = new Date(value)
   if (isToday(date)) return format(date, 'HH:mm')
   if (isYesterday(date)) return 'Yesterday'
-  return format(date, 'dd/MM', { locale: vi })
+  return format(date, 'MMM d')
 }
 
 export function lastMessageLabel(conversation: Conversation, me?: UserProfile | null) {
