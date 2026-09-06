@@ -3,5 +3,5 @@ import { BrandMark } from '../components/brand/BrandMark'
 import { Button } from '../components/ui/Button'
 
 export function NotFoundPage() {
-  return <main className="not-found"><BrandMark /><span>404</span><h1>Trang này đã đi lạc</h1><p>Cuộc trò chuyện bạn tìm có thể đã được chuyển sang nơi khác.</p><Button><Link to="/">Về trang chính</Link></Button></main>
+  return <main className="not-found"><BrandMark /><span>404</span><h1>This page wandered off</h1><p>The conversation you are looking for may have moved somewhere else.</p><Button><Link to="/">Back to messages</Link></Button></main>
 }
