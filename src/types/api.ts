@@ -41,7 +41,7 @@ export interface UserProfile extends UserSummary {
 export type ConversationType = 'PRIVATE' | 'GROUP'
 export type MemberRole = 'OWNER' | 'ADMIN' | 'MEMBER'
 export type MemberStatus = 'ACTIVE' | 'LEFT' | 'REMOVED'
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE'
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM'
 
 export interface Attachment {
   id?: string
