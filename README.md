@@ -1,32 +1,66 @@
-# React + TypeScript + Vite
+# Luma Realtime Chat Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Luma is a portfolio-ready realtime chat frontend built as a React single-page application. It consumes the REST and STOMP contracts from [`realtime-chat-server`](https://github.com/tranverse/realtime-chat-server), a Spring Boot modular monolith.
 
-Currently, two official plugins are available:
+## Highlights
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Complete email authentication: register OTP, sign in, token rotation, sign out, password recovery, and Google OAuth callback.
+- Direct and group conversations with user search, member administration, ownership transfer, invitation links, and join-request review.
+- Realtime STOMP messaging with authenticated reconnect, typing indicators, read receipts, replies, editing, deletion, and REST fallback.
+- Cursor-based history, TanStack Query cache synchronization, route-level code splitting, responsive mobile layout, and accessible UI states.
+- Profile management and session revocation.
+- Production Docker image with Nginx SPA fallback and REST/WebSocket reverse proxy.
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+React 19, TypeScript, Vite, React Router, TanStack Query, Axios, STOMP.js, SockJS, Zod, Lucide, Vitest, Testing Library, and plain CSS.
 
-## Expanding the Oxlint configuration
+This repository intentionally does **not** use Next.js. The browser application is a static SPA; all business logic remains in the Spring Boot monolith.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Run locally
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Requirements: Node.js 22+ and the backend running on `http://localhost:8080`.
+
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Vite serves the application at `http://localhost:5173` and proxies `/api`, `/ws`, and `/oauth2` to the backend. Copy `.env.example` to `.env` only when you need different endpoints.
+
+```env
+VITE_API_BASE_URL=/api/v1
+VITE_WS_URL=/ws
+```
+
+For direct calls without the Vite/Nginx proxy, use absolute values such as `VITE_API_BASE_URL=http://localhost:8080/api/v1` and `VITE_WS_URL=http://localhost:8080/ws`.
+
+## Quality checks
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+## Docker
+
+```bash
+docker build -t luma-chat-client .
+docker run --rm -p 3000:80 -e BACKEND_HOST=host.docker.internal:8080 luma-chat-client
+```
+
+Open `http://localhost:3000`. In a Compose network, set `BACKEND_HOST` to the backend service name, for example `chat-server:8080`.
+
+## Git branches
+
+| Branch | Responsibility |
+| --- | --- |
+| `chore/frontend-foundation` | Vite/TypeScript setup, design system, API types, test foundation |
+| `feature/authentication-ui` | Authentication, OAuth callback, refresh-token handling |
+| `feature/conversation-management` | Conversation, membership, invitation, and profile features |
+| `feature/realtime-messaging` | History, STOMP events, composer, replies, edits, deletes, read/typing state |
+| `chore/frontend-delivery` | Docker, CI, branding, and documentation |
+| `feature/chat-client-mvp` | Integration branch containing the complete MVP |
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the client structure and backend integration decisions.
