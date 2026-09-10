@@ -7,12 +7,13 @@ interface Props {
   message: ChatMessage
   mine: boolean
   canDelete: boolean
+  receipt: string | null
   onReply: () => void
   onEdit: (content: string) => void
   onDelete: () => void
 }
 
-export function MessageBubble({ message, mine, canDelete, onReply, onEdit, onDelete }: Props) {
+export function MessageBubble({ message, mine, canDelete, receipt, onReply, onEdit, onDelete }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(message.content ?? '')
@@ -29,6 +30,7 @@ export function MessageBubble({ message, mine, canDelete, onReply, onEdit, onDel
         </>}
         <time>{new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}{message.editedAt && ' · edited'}</time>
       </div>
+      {receipt && <span className="message-receipt">{receipt}</span>}
       {!deleted && <div className="message-tools"><Button size="icon" variant="ghost" onClick={onReply}>Reply<Reply size={14} /></Button><Button size="icon" variant="ghost" onClick={() => setMenuOpen((value) => !value)}>More actions<MoreHorizontal size={15} /></Button>{menuOpen && <div className="message-menu">{mine && <button onClick={() => { setEditing(true); setMenuOpen(false) }}><Pencil size={13} /> Edit</button>}{canDelete && <button className="is-danger" onClick={() => { onDelete(); setMenuOpen(false) }}><Trash2 size={13} /> Delete</button>}</div>}</div>}
     </article>
   )

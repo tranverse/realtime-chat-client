@@ -449,6 +449,7 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .message-bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.48; }
 .message-bubble time { margin-top: 4px; display: block; color: var(--ink-400); text-align: right; font-size: 8px; }
 .is-mine .message-bubble time { color: rgba(255,255,255,.58); }
+.message-receipt { display: block; margin: 3px 3px 1px; color: var(--ink-400); text-align: right; font-size: 9px; font-weight: 650; }
 .reply-quote { margin-bottom: 7px; padding: 6px 8px; display: grid; border-left: 2px solid var(--primary-500); background: rgba(255,255,255,.55); border-radius: 7px; }
 .is-mine .reply-quote { border-color: rgba(255,255,255,.8); background: rgba(255,255,255,.12); }
 .reply-quote strong { font-size: 9px; }

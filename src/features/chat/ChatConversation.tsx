@@ -17,6 +17,7 @@ import { messageApi } from './messageApi'
 import { applyMessageEvent, type MessagePages } from './messageCache'
 import { MessageBubble } from './MessageBubble'
 import { MessageComposer } from './MessageComposer'
+import { receiptLabel, type ReadSequences } from './readReceipts'
 import { useConversationRealtime } from './useConversationRealtime'
 
 export function ChatConversation({ conversationId }: { conversationId: string }) {
@@ -26,6 +27,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
+  const [readSequences, setReadSequences] = useState<ReadSequences>({})
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const lastReadRef = useRef<string | null>(null)
   const typingTimers = useRef(new Map<string, number>())
@@ -46,11 +48,16 @@ export function ChatConversation({ conversationId }: { conversationId: string })
       if (event.typing) typingTimers.current.set(event.actorUserId, window.setTimeout(() => setTypingUsers((current) => { const next = new Set(current); next.delete(event.actorUserId); return next }), 2_500))
       return
     }
-    queryClient.setQueryData<MessagePages>(['messages', conversationId], (current) => applyMessageEvent(current, event))
-    if (event.type !== 'MESSAGES_READ') {
-      void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-      void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+    if (event.type === 'MESSAGES_READ') {
+      setReadSequences((current) => ({
+        ...current,
+        [event.actorUserId]: Math.max(current[event.actorUserId] ?? 0, event.sequence),
+      }))
+      return
     }
+    queryClient.setQueryData<MessagePages>(['messages', conversationId], (current) => applyMessageEvent(current, event))
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
   }, [conversationId, queryClient, user?.id])
 
   const realtime = useConversationRealtime(conversationId, onRealtimeEvent, (error) => toast.error(error.message))
@@ -88,7 +95,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     <div className="message-history">
       {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void history.fetchNextPage()}>Load older messages</Button>}
       {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
-      <div className="message-list">{messages.map((message) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} canDelete={message.sender.id === user?.id || canManage} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
+      <div className="message-list">{messages.map((message) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
     </div>
     {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}
     <MessageComposer replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} onSend={send} onTyping={realtime.sendTyping} disabled={history.isError} />
