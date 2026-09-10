@@ -438,6 +438,7 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .connection-state.is-connected { color: var(--teal-600); }
 .connection-state.is-offline { color: var(--coral-600); }
 .message-history { min-height: 0; flex: 1; padding: 18px clamp(18px, 4vw, 52px) 8px; overflow-y: auto; background: linear-gradient(180deg, #fcfcfd 0%, #fff 18%); scrollbar-width: thin; scrollbar-color: var(--ink-200) transparent; }
+.new-message-notice { position: sticky; bottom: 8px; z-index: 2; margin: 8px auto 0; box-shadow: var(--shadow-md); }
 .load-older { margin: 0 auto 20px; display: flex; }
 .message-list { display: flex; flex-direction: column; gap: 3px; }
 .message-row { max-width: min(76%, 660px); padding: 1px 0; position: relative; align-self: flex-start; }
