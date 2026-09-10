@@ -30,6 +30,16 @@ export function getConversationAvatar(conversation: Conversation, currentUserId?
   return conversation.avatar || getConversationPeer(conversation, currentUserId)?.avatar
 }
 
+export function getConversationParticipantsLabel(conversation: Conversation, currentUserId?: string) {
+  if (conversation.type === 'PRIVATE') {
+    const peerName = getConversationPeer(conversation, currentUserId)?.name
+      ?? conversation.name
+      ?? 'one other person'
+    return `You and ${peerName}`
+  }
+  return `${conversation.memberCount} ${conversation.memberCount === 1 ? 'member' : 'members'}`
+}
+
 export function formatConversationTime(value?: string) {
   if (!value) return ''
   const date = new Date(value)
