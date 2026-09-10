@@ -20,6 +20,7 @@ import { MessageComposer } from './MessageComposer'
 import { receiptLabel, type ReadSequences } from './readReceipts'
 import { useConversationRealtime } from './useConversationRealtime'
 import { useMessageScroll } from './useMessageScroll'
+import { DeleteMessageDialog } from './DeleteMessageDialog'
 
 export function ChatConversation({ conversationId }: { conversationId: string }) {
   const { user } = useAuth()
@@ -27,6 +28,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const queryClient = useQueryClient()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [readSequences, setReadSequences] = useState<ReadSequences>({})
   const lastReadRef = useRef<string | null>(null)
@@ -92,7 +94,11 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   useEffect(() => () => { typingTimers.current.forEach((timer) => window.clearTimeout(timer)) }, [])
 
   const edit = useMutation({ mutationFn: ({ id, content }: { id: string; content: string }) => messageApi.edit(id, content), onError: (error) => toast.error(getErrorMessage(error)) })
-  const remove = useMutation({ mutationFn: (id: string) => messageApi.remove(id), onError: (error) => toast.error(getErrorMessage(error)) })
+  const remove = useMutation({
+    mutationFn: (id: string) => messageApi.remove(id),
+    onSuccess: () => setDeleteTarget(null),
+    onError: (error) => toast.error(getErrorMessage(error)),
+  })
 
   async function send(payload: CreateMessagePayload) {
     if (realtime.sendMessage(payload)) return
@@ -113,11 +119,12 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     <div className="message-history" ref={historyRef} onScroll={handleScroll}>
       {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void loadOlderPreservingPosition(history.fetchNextPage)}>Load older messages</Button>}
       {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
-      <div className="message-list">{messages.map((message, index) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} showAuthor={index === 0 || messages[index - 1].sender.id !== message.sender.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
+      <div className="message-list">{messages.map((message, index) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} showAuthor={index === 0 || messages[index - 1].sender.id !== message.sender.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => setDeleteTarget(message)} />)}<div ref={bottomRef} /></div>
       {unseenMessages > 0 && <Button className="new-message-notice" size="sm" leftIcon={<ArrowDown size={14} />} onClick={() => scrollToBottom()}>{unseenMessages} new {unseenMessages === 1 ? 'message' : 'messages'}</Button>}
     </div>
     {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}
     <MessageComposer replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} onSend={send} onTyping={realtime.sendTyping} disabled={history.isError} />
     <ConversationDetailsModal conversation={conversation.data} open={detailsOpen} onClose={() => setDetailsOpen(false)} />
+    <DeleteMessageDialog message={deleteTarget} deleting={remove.isPending} onClose={() => setDeleteTarget(null)} onConfirm={() => { if (deleteTarget) remove.mutate(deleteTarget.id) }} />
   </div>
 }
