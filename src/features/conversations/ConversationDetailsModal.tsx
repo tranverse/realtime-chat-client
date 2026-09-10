@@ -13,7 +13,7 @@ import type { Conversation, InviteLink, MemberRole } from '../../types/api'
 import { useAuth } from '../auth/useAuth'
 import { userApi } from '../profile/userApi'
 import { conversationApi } from './conversationApi'
-import { getConversationName } from './conversationUtils'
+import { getConversationName, getConversationParticipantsLabel } from './conversationUtils'
 
 export function ConversationDetailsModal({ conversation, open, onClose }: { conversation: Conversation; open: boolean; onClose: () => void }) {
   const { user } = useAuth()
@@ -60,7 +60,7 @@ export function ConversationDetailsModal({ conversation, open, onClose }: { conv
       <div className="details-stack">
         <section className="details-identity">
           <Avatar name={getConversationName(conversation, user?.id)} src={avatar || conversation.avatar} size="xl" />
-          <div><h3>{getConversationName(conversation, user?.id)}</h3><p>{conversation.type === 'GROUP' ? `${conversation.memberCount} members` : 'Direct conversation'}</p><span>{conversation.myRole.toLowerCase()}</span></div>
+          <div><h3>{getConversationName(conversation, user?.id)}</h3><p>{getConversationParticipantsLabel(conversation, user?.id)}</p>{conversation.type === 'GROUP' && <span>{conversation.myRole.toLowerCase()}</span>}</div>
         </section>
 
         {conversation.type === 'GROUP' && canManage && <section className="details-section">
@@ -77,7 +77,7 @@ export function ConversationDetailsModal({ conversation, open, onClose }: { conv
         </section>}
 
         <section className="details-section">
-          <div className="details-section__heading"><div><h3>Members</h3><p>{activeMembers.length} active in this conversation.</p></div></div>
+          <div className="details-section__heading"><div><h3>{conversation.type === 'PRIVATE' ? 'Participants' : 'Members'}</h3><p>{conversation.type === 'PRIVATE' ? getConversationParticipantsLabel(conversation, user?.id) : `${activeMembers.length} active in this conversation.`}</p></div></div>
           <div className="member-list">{activeMembers.map((member) => {
             const isMe = member.user.id === user?.id
             return <div key={member.id} className="member-row"><Avatar name={member.user.name} src={member.user.avatar} size="sm" /><span><strong>{member.user.name}{isMe ? ' (you)' : ''}</strong><small>@{member.user.username || member.user.email}</small></span><i className={`role-badge role-badge--${member.role.toLowerCase()}`}>{member.role === 'OWNER' && <Crown size={11} />}{member.role === 'ADMIN' && <ShieldCheck size={11} />}{member.role}</i>{canManage && !isMe && member.role !== 'OWNER' && <div className="member-actions">{conversation.myRole === 'OWNER' && <select aria-label={`Role for ${member.user.name}`} value={member.role} onChange={(event) => updateRole(member.user.id, event.target.value as MemberRole)}><option value="MEMBER">Member</option><option value="ADMIN">Admin</option></select>}{conversation.myRole === 'OWNER' && <Button size="icon" variant="ghost" onClick={() => action.mutate(() => conversationApi.transferOwnership(conversation.id, member.user.id))}>Transfer ownership<Crown size={14} /></Button>}<Button size="icon" variant="ghost" onClick={() => action.mutate(() => conversationApi.removeMember(conversation.id, member.user.id))}>Remove member<UserMinus size={14} /></Button></div>}</div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Conversation } from '../../types/api'
-import { filterConversations, getConversationName, lastMessageLabel } from './conversationUtils'
+import { filterConversations, getConversationName, getConversationParticipantsLabel, lastMessageLabel } from './conversationUtils'
 
 const conversation = {
   id: 'c1', name: null, avatar: null, type: 'PRIVATE', maxMembers: 2, memberCount: 2, unreadCount: 0, myRole: 'MEMBER', lastMessage: null, createdAt: '', updatedAt: '',
@@ -13,6 +13,7 @@ const conversation = {
 describe('conversationUtils', () => {
   it('uses the peer name for direct conversations', () => {
     expect(getConversationName(conversation, 'me')).toBe('Sam Lee')
+    expect(getConversationParticipantsLabel(conversation, 'me')).toBe('You and Sam Lee')
   })
 
   it('provides an empty-conversation label', () => {
