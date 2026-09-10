@@ -2,6 +2,7 @@ import { Download, FileText, MoreHorizontal, Pencil, Reply, Trash2 } from 'lucid
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import type { ChatMessage } from '../../types/api'
+import { ImageMessage } from './ImageMessage'
 
 interface Props {
   message: ChatMessage
@@ -11,9 +12,10 @@ interface Props {
   onReply: () => void
   onEdit: (content: string) => void
   onDelete: () => void
+  showAuthor?: boolean
 }
 
-export function MessageBubble({ message, mine, canDelete, receipt, onReply, onEdit, onDelete }: Props) {
+export function MessageBubble({ message, mine, canDelete, receipt, onReply, onEdit, onDelete, showAuthor = true }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(message.content ?? '')
@@ -21,12 +23,13 @@ export function MessageBubble({ message, mine, canDelete, receipt, onReply, onEd
 
   return (
     <article className={mine ? 'message-row is-mine' : 'message-row'} data-sequence={message.sequence}>
-      {!mine && <span className="message-author">{message.sender.name}</span>}
-      <div className={deleted ? 'message-bubble is-deleted' : 'message-bubble'}>
+      {!mine && showAuthor && <span className="message-author">{message.sender.name}</span>}
+      <div className={`${deleted ? 'message-bubble is-deleted' : 'message-bubble'}${message.attachments.some((attachment) => attachment.fileType.startsWith('image/')) && !message.content ? ' is-image-only' : ''}`}>
         {message.replyTo && <div className="reply-quote"><strong>{message.replyTo.sender.name}</strong><span>{message.replyTo.content ?? 'Deleted message'}</span></div>}
         {editing ? <form className="message-edit" onSubmit={(event) => { event.preventDefault(); if (draft.trim()) { onEdit(draft.trim()); setEditing(false) } }}><input autoFocus maxLength={5000} value={draft} onChange={(event) => setDraft(event.target.value)} /><button type="button" onClick={() => { setDraft(message.content ?? ''); setEditing(false) }}>Cancel</button><button type="submit">Save</button></form> : <>
-          {deleted ? <p>This message was deleted.</p> : message.content && <p>{message.content}</p>}
-          {message.attachments.length > 0 && <div className="message-attachments">{message.attachments.map((attachment) => attachment.fileType.startsWith('image/') ? <a key={attachment.id ?? attachment.fileUrl} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="image-attachment"><img src={attachment.fileUrl} alt="Shared attachment" /></a> : <a key={attachment.id ?? attachment.fileUrl} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="file-attachment"><FileText size={20} /><span><strong>{attachment.fileUrl.split('/').at(-1) || 'Attachment'}</strong><small>{attachment.fileType}{attachment.fileSize ? ` · ${formatSize(attachment.fileSize)}` : ''}</small></span><Download size={16} /></a>)}</div>}
+          {deleted ? <p>Message deleted</p> : message.content && <p>{message.content}</p>}
+          <ImageMessage attachments={message.attachments} />
+          {message.attachments.some((attachment) => !attachment.fileType.startsWith('image/')) && <div className="message-attachments">{message.attachments.filter((attachment) => !attachment.fileType.startsWith('image/')).map((attachment) => <a key={attachment.id ?? attachment.fileUrl} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="file-attachment"><FileText size={20} /><span><strong>{attachment.fileUrl.split('/').at(-1) || 'Attachment'}</strong><small>{attachment.fileType}{attachment.fileSize ? ` · ${formatSize(attachment.fileSize)}` : ''}</small></span><Download size={16} /></a>)}</div>}
         </>}
         <time>{new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}{message.editedAt && ' · edited'}</time>
       </div>
