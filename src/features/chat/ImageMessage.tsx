@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FiChevronLeft, FiChevronRight, FiImage, FiX } from 'react-icons/fi'
-import type { Attachment } from '../../types/api'
+import type { Attachment } from '@/types/api'
 
 export function ImageMessage({ attachments }: { attachments: Attachment[] }) {
   const images = attachments.filter((attachment) => attachment.fileType.startsWith('image/'))
