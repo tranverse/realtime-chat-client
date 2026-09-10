@@ -7,6 +7,7 @@ import type { PageResponse, Conversation } from '@/types/api'
 import { useAuth } from '../auth/useAuth'
 import { conversationApi } from '../conversations/conversationApi'
 import { formatConversationTime, getConversationAvatar, getConversationName, lastMessageLabel } from '../conversations/conversationUtils'
+import { useInboxRealtime } from './useInboxRealtime'
 
 export function NotificationButton() {
   const { user } = useAuth()
@@ -17,6 +18,9 @@ export function NotificationButton() {
   const conversations = useQuery({ queryKey: ['conversations'], queryFn: () => conversationApi.list(), refetchInterval: 15_000 })
   const unread = (conversations.data?.items ?? []).filter((conversation) => conversation.unreadCount > 0)
   const unreadCount = unread.reduce((total, conversation) => total + conversation.unreadCount, 0)
+  useInboxRealtime((conversations.data?.items ?? []).map((conversation) => conversation.id), () => {
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+  })
 
   useEffect(() => {
     function close(event: MouseEvent) { if (!rootRef.current?.contains(event.target as Node)) setOpen(false) }
