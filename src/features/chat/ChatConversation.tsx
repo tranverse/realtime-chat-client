@@ -17,7 +17,9 @@ import { messageApi } from './messageApi'
 import { applyMessageEvent, type MessagePages } from './messageCache'
 import { MessageBubble } from './MessageBubble'
 import { MessageComposer } from './MessageComposer'
+import { receiptLabel, type ReadSequences } from './readReceipts'
 import { useConversationRealtime } from './useConversationRealtime'
+import { useMessageScroll } from './useMessageScroll'
 
 export function ChatConversation({ conversationId }: { conversationId: string }) {
   const { user } = useAuth()
@@ -26,7 +28,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
-  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const [readSequences, setReadSequences] = useState<ReadSequences>({})
   const lastReadRef = useRef<string | null>(null)
   const typingTimers = useRef(new Map<string, number>())
 
@@ -46,16 +48,40 @@ export function ChatConversation({ conversationId }: { conversationId: string })
       if (event.typing) typingTimers.current.set(event.actorUserId, window.setTimeout(() => setTypingUsers((current) => { const next = new Set(current); next.delete(event.actorUserId); return next }), 2_500))
       return
     }
-    queryClient.setQueryData<MessagePages>(['messages', conversationId], (current) => applyMessageEvent(current, event))
-    if (event.type !== 'MESSAGES_READ') {
-      void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-      void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+    if (event.type === 'MESSAGES_READ') {
+      setReadSequences((current) => ({
+        ...current,
+        [event.actorUserId]: Math.max(current[event.actorUserId] ?? 0, event.sequence),
+      }))
+      return
     }
+    queryClient.setQueryData<MessagePages>(['messages', conversationId], (current) => applyMessageEvent(current, event))
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
   }, [conversationId, queryClient, user?.id])
 
-  const realtime = useConversationRealtime(conversationId, onRealtimeEvent, (error) => toast.error(error.message))
+  const onRealtimeConnected = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
+    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+  }, [conversationId, queryClient])
+
+  const realtime = useConversationRealtime(
+    conversationId,
+    onRealtimeEvent,
+    (error) => toast.error(error.message),
+    onRealtimeConnected,
+  )
   const messages = useMemo(() => (history.data?.pages.flatMap((page) => page.items) ?? []).sort((a, b) => a.sequence - b.sequence), [history.data])
   const newest = messages.at(-1)
+  const {
+    historyRef,
+    bottomRef,
+    unseenMessages,
+    handleScroll,
+    scrollToBottom,
+    loadOlderPreservingPosition,
+  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id)
 
   useEffect(() => {
     if (!newest || newest.sender.id === user?.id || lastReadRef.current === newest.id) return
@@ -63,7 +89,6 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     if (!realtime.sendRead(newest.id)) void messageApi.markRead(conversationId, newest.id)
   }, [conversationId, newest, realtime, user?.id])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: history.isFetching ? 'auto' : 'smooth' }) }, [newest?.id, history.isFetching])
   useEffect(() => () => { typingTimers.current.forEach((timer) => window.clearTimeout(timer)) }, [])
 
   const edit = useMutation({ mutationFn: ({ id, content }: { id: string; content: string }) => messageApi.edit(id, content), onError: (error) => toast.error(getErrorMessage(error)) })
@@ -84,11 +109,12 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const typingNames = conversation.data.members?.filter((member) => typingUsers.has(member.user.id)).map((member) => member.user.name.split(' ')[0]) ?? []
 
   return <div className="chat-conversation">
-    <header className="chat-header"><Button size="icon" variant="ghost" className="mobile-back" onClick={() => navigate('/')}>Back<ArrowLeft size={19} /></Button><Avatar name={name} src={getConversationAvatar(conversation.data, user?.id)} size="md" online={realtime.status === 'connected'} /><div><h2>{name}</h2><p className={`connection-state is-${realtime.status}`}>{realtime.status === 'connected' ? <Wifi size={10} /> : <WifiOff size={10} />}{realtime.status === 'connected' ? (typingNames.length ? `${typingNames.join(', ')} typing…` : 'Realtime connected') : realtime.status === 'connecting' ? 'Connecting…' : 'Offline · REST fallback enabled'}</p></div><Button size="icon" variant="ghost" onClick={() => setDetailsOpen(true)}>Conversation info<Info size={19} /></Button></header>
-    <div className="message-history">
-      {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void history.fetchNextPage()}>Load older messages</Button>}
+    <header className="chat-header"><Button size="icon" variant="ghost" className="mobile-back" onClick={() => navigate('/')}>Back<ArrowLeft size={19} /></Button><Avatar name={name} src={getConversationAvatar(conversation.data, user?.id)} size="md" /><div><h2>{name}</h2><p className={`connection-state is-${realtime.status}`}>{realtime.status === 'connected' ? <Wifi size={10} /> : <WifiOff size={10} />}{realtime.status === 'connected' ? (typingNames.length ? `${typingNames.join(', ')} typing…` : 'Connected') : realtime.status === 'connecting' ? 'Connecting…' : 'Offline · REST fallback enabled'}</p></div><Button size="icon" variant="ghost" onClick={() => setDetailsOpen(true)}>Conversation info<Info size={19} /></Button></header>
+    <div className="message-history" ref={historyRef} onScroll={handleScroll}>
+      {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void loadOlderPreservingPosition(history.fetchNextPage)}>Load older messages</Button>}
       {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
-      <div className="message-list">{messages.map((message) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} canDelete={message.sender.id === user?.id || canManage} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
+      <div className="message-list">{messages.map((message) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
+      {unseenMessages > 0 && <Button className="new-message-notice" size="sm" leftIcon={<ArrowDown size={14} />} onClick={() => scrollToBottom()}>{unseenMessages} new {unseenMessages === 1 ? 'message' : 'messages'}</Button>}
     </div>
     {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}
     <MessageComposer replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} onSend={send} onTyping={realtime.sendTyping} disabled={history.isError} />

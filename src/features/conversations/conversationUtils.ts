@@ -1,6 +1,23 @@
 import { format, isToday, isYesterday } from 'date-fns'
 import type { Conversation, UserProfile } from '../../types/api'
 
+export type ConversationFilter = 'all' | 'unread' | 'groups'
+
+export function filterConversations(
+  conversations: Conversation[],
+  filter: ConversationFilter,
+  search: string,
+  currentUserId?: string,
+) {
+  const normalizedSearch = search.trim().toLowerCase()
+  return conversations.filter((conversation) => {
+    if (filter === 'unread' && conversation.unreadCount === 0) return false
+    if (filter === 'groups' && conversation.type !== 'GROUP') return false
+    return !normalizedSearch
+      || getConversationName(conversation, currentUserId).toLowerCase().includes(normalizedSearch)
+  })
+}
+
 export function getConversationPeer(conversation: Conversation, currentUserId?: string) {
   return conversation.type === 'PRIVATE' ? conversation.members?.find((member) => member.user.id !== currentUserId)?.user : undefined
 }
@@ -11,6 +28,16 @@ export function getConversationName(conversation: Conversation, currentUserId?: 
 
 export function getConversationAvatar(conversation: Conversation, currentUserId?: string) {
   return conversation.avatar || getConversationPeer(conversation, currentUserId)?.avatar
+}
+
+export function getConversationParticipantsLabel(conversation: Conversation, currentUserId?: string) {
+  if (conversation.type === 'PRIVATE') {
+    const peerName = getConversationPeer(conversation, currentUserId)?.name
+      ?? conversation.name
+      ?? 'one other person'
+    return `You and ${peerName}`
+  }
+  return `${conversation.memberCount} ${conversation.memberCount === 1 ? 'member' : 'members'}`
 }
 
 export function formatConversationTime(value?: string) {

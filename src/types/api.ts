@@ -50,6 +50,12 @@ export interface Attachment {
   fileSize: number | null
 }
 
+export interface MediaUpload extends Omit<Attachment, 'id'> {
+  publicId: string
+  width: number | null
+  height: number | null
+}
+
 export interface ReplyMessage {
   id: string
   content: string | null
