@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { FiX } from 'react-icons/fi'
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from './Button'
@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
             <h2 id="modal-title">{title}</h2>
             {description && <p>{description}</p>}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}><X size={19} /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose}>Close dialog<FiX size={19} /></Button>
         </header>
         <div className="modal__body">{children}</div>
         {footer && <footer className="modal__footer">{footer}</footer>}
