@@ -487,16 +487,18 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .message-composer textarea { min-height: 38px; max-height: 120px; padding: 10px 8px; flex: 1; resize: none; color: var(--ink-900); background: transparent; border: 0; outline: 0; font-size: 12px; line-height: 1.4; }
 .message-composer .button { flex: 0 0 auto; }
 .composer-hint { margin: 6px 2px 0; display: flex; align-items: center; gap: 4px; color: var(--ink-400); font-size: 8px; }
-.composer-reply, .attachment-form { margin-bottom: 5px; padding: 7px 8px; display: flex; align-items: center; gap: 8px; background: var(--primary-50); border-radius: 10px 10px 4px 4px; }
+.composer-reply, .image-upload-preview { margin-bottom: 5px; padding: 7px 8px; display: flex; align-items: center; gap: 8px; background: var(--primary-50); border-radius: 10px 10px 4px 4px; }
 .composer-reply__icon { width: 27px; height: 27px; display: grid; place-items: center; color: var(--primary-600); background: var(--white); border-radius: 8px; }
 .composer-reply > span:nth-child(2) { min-width: 0; flex: 1; display: grid; }
 .composer-reply strong { font-size: 9px; }
 .composer-reply small { overflow: hidden; color: var(--ink-500); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-.composer-reply .button, .attachment-form .button { width: 29px; height: 29px; }
-.attachment-form { background: var(--ink-50); }
-.attachment-form > svg { color: var(--ink-400); }
-.attachment-form input { min-width: 0; flex: 1; padding: 6px 8px; background: var(--white); border: 1px solid var(--ink-100); border-radius: 7px; outline: 0; font-size: 9px; }
-.attachment-form select { height: 29px; color: var(--ink-600); background: var(--white); border: 1px solid var(--ink-100); border-radius: 7px; font-size: 9px; }
+.composer-reply .button, .image-upload-preview .button { width: 29px; height: 29px; }
+.image-upload-preview { background: var(--ink-50); }
+.image-upload-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 9px; }
+.image-upload-preview > span { min-width: 0; flex: 1; display: grid; }
+.image-upload-preview strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.image-upload-preview small { margin-top: 2px; color: var(--ink-500); font-size: 8px; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
 @media (max-width: 760px) {
   .chat-conversation { height: calc(100dvh - 64px); }
@@ -505,8 +507,6 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
   .message-tools { opacity: 1; }
   .composer-wrap { padding: 6px 9px 10px; }
   .composer-hint { display: none; }
-  .attachment-form { flex-wrap: wrap; }
-  .attachment-form input { flex-basis: calc(100% - 55px); }
 }
 
 .stage-spinner { margin: auto; }
