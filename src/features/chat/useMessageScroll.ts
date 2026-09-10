@@ -16,10 +16,12 @@ export function useMessageScroll(newestMessageId: string | undefined, newestMess
   const nearBottomRef = useRef(true)
   const previousNewestIdRef = useRef<string | undefined>(undefined)
   const [unseenMessages, setUnseenMessages] = useState(0)
+  const [isNearBottom, setIsNearBottom] = useState(true)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     bottomRef.current?.scrollIntoView({ behavior })
     nearBottomRef.current = true
+    setIsNearBottom(true)
     setUnseenMessages(0)
   }, [])
 
@@ -27,6 +29,7 @@ export function useMessageScroll(newestMessageId: string | undefined, newestMess
     const element = historyRef.current
     if (!element) return
     nearBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight <= BOTTOM_THRESHOLD_PX
+    setIsNearBottom(nearBottomRef.current)
     if (nearBottomRef.current) setUnseenMessages(0)
   }, [])
 
@@ -63,6 +66,7 @@ export function useMessageScroll(newestMessageId: string | undefined, newestMess
     historyRef,
     bottomRef,
     unseenMessages,
+    isNearBottom,
     handleScroll,
     scrollToBottom,
     loadOlderPreservingPosition,

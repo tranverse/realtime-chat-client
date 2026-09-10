@@ -2,6 +2,10 @@ import type { Conversation } from '../../types/api'
 
 export type ReadSequences = Record<string, number>
 
+export function canMarkConversationRead(isNearBottom: boolean, pageVisible: boolean, windowFocused: boolean) {
+  return isNearBottom && pageVisible && windowFocused
+}
+
 export function receiptLabel(
   conversation: Conversation,
   senderId: string,
