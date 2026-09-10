@@ -34,7 +34,7 @@ export function MessageBubble({ message, mine, canDelete, receipt, onReply, onEd
         <time>{new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}{message.editedAt && ' · edited'}</time>
       </div>
       {receipt && <span className="message-receipt">{receipt}</span>}
-      {!deleted && <div className="message-tools"><Button size="icon" variant="ghost" onClick={onReply}>Reply<Reply size={14} /></Button><Button size="icon" variant="ghost" onClick={() => setMenuOpen((value) => !value)}>More actions<MoreHorizontal size={15} /></Button>{menuOpen && <div className="message-menu">{mine && <button onClick={() => { setEditing(true); setMenuOpen(false) }}><Pencil size={13} /> Edit</button>}{canDelete && <button className="is-danger" onClick={() => { onDelete(); setMenuOpen(false) }}><Trash2 size={13} /> Delete</button>}</div>}</div>}
+      {!deleted && <div className="message-tools"><Button className="message-reply-action" size="icon" variant="ghost" onClick={onReply}>Reply<Reply size={14} /></Button><Button size="icon" variant="ghost" onClick={() => setMenuOpen((value) => !value)}>More actions<MoreHorizontal size={15} /></Button>{menuOpen && <div className="message-menu"><button className="message-menu__reply" onClick={() => { onReply(); setMenuOpen(false) }}><Reply size={13} /> Reply</button>{mine && <button onClick={() => { setEditing(true); setMenuOpen(false) }}><Pencil size={13} /> Edit</button>}{canDelete && <button className="is-danger" onClick={() => { onDelete(); setMenuOpen(false) }}><Trash2 size={13} /> Delete</button>}</div>}</div>}
     </article>
   )
 }
