@@ -7,12 +7,17 @@ import type { ChatEvent, CreateMessagePayload, TypingEvent, WebSocketError } fro
 
 type IncomingEvent = ChatEvent | TypingEvent
 
-export function useConversationRealtime(conversationId: string, onEvent: (event: IncomingEvent) => void, onError: (error: WebSocketError) => void) {
+export function useConversationRealtime(
+  conversationId: string,
+  onEvent: (event: IncomingEvent) => void,
+  onError: (error: WebSocketError) => void,
+  onConnected: () => void,
+) {
   const clientRef = useRef<Client | null>(null)
-  const callbacksRef = useRef({ onEvent, onError })
+  const callbacksRef = useRef({ onEvent, onError, onConnected })
   const [status, setStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting')
 
-  useEffect(() => { callbacksRef.current = { onEvent, onError } }, [onEvent, onError])
+  useEffect(() => { callbacksRef.current = { onEvent, onError, onConnected } }, [onEvent, onError, onConnected])
 
   useEffect(() => {
     const socketUrl = /^https?:\/\//.test(appConfig.wsUrl) ? appConfig.wsUrl : `${window.location.origin}${appConfig.wsUrl.startsWith('/') ? '' : '/'}${appConfig.wsUrl}`
@@ -27,6 +32,7 @@ export function useConversationRealtime(conversationId: string, onEvent: (event:
         setStatus('connected')
         client.subscribe(`/topic/conversations/${conversationId}`, (frame: IMessage) => callbacksRef.current.onEvent(JSON.parse(frame.body) as IncomingEvent))
         client.subscribe('/user/queue/errors', (frame: IMessage) => callbacksRef.current.onError(JSON.parse(frame.body) as WebSocketError))
+        callbacksRef.current.onConnected()
       },
       onWebSocketClose: () => setStatus('offline'),
       onStompError: () => setStatus('offline'),

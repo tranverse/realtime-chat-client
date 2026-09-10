@@ -60,7 +60,18 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
   }, [conversationId, queryClient, user?.id])
 
-  const realtime = useConversationRealtime(conversationId, onRealtimeEvent, (error) => toast.error(error.message))
+  const onRealtimeConnected = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
+    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+  }, [conversationId, queryClient])
+
+  const realtime = useConversationRealtime(
+    conversationId,
+    onRealtimeEvent,
+    (error) => toast.error(error.message),
+    onRealtimeConnected,
+  )
   const messages = useMemo(() => (history.data?.pages.flatMap((page) => page.items) ?? []).sort((a, b) => a.sequence - b.sequence), [history.data])
   const newest = messages.at(-1)
   const {
