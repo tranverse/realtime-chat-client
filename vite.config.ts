@@ -1,8 +1,9 @@
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   // sockjs-client still references the Node.js `global` identifier. In the
   // browser, globalThis is the standards-based equivalent and avoids pulling
   // a full Node polyfill into the client bundle.
