@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { FiImage, FiPaperclip, FiRefreshCw, FiSend, FiSmile, FiX } from 'react-icons/fi'
 import { toast } from 'sonner'
-import { Button } from '../../components/ui/Button'
-import { getErrorMessage } from '../../lib/errors'
-import type { ChatMessage, CreateMessagePayload } from '../../types/api'
+import { Button } from '@/components/ui/Button'
+import { getErrorMessage } from '@/lib/errors'
+import type { ChatMessage, CreateMessagePayload } from '@/types/api'
 import { validateChatImage } from './imageUpload'
 import { mediaApi } from './mediaApi'
 
