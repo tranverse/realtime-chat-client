@@ -19,6 +19,7 @@ import { MessageBubble } from './MessageBubble'
 import { MessageComposer } from './MessageComposer'
 import { receiptLabel, type ReadSequences } from './readReceipts'
 import { useConversationRealtime } from './useConversationRealtime'
+import { useMessageScroll } from './useMessageScroll'
 
 export function ChatConversation({ conversationId }: { conversationId: string }) {
   const { user } = useAuth()
@@ -28,7 +29,6 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [readSequences, setReadSequences] = useState<ReadSequences>({})
-  const bottomRef = useRef<HTMLDivElement | null>(null)
   const lastReadRef = useRef<string | null>(null)
   const typingTimers = useRef(new Map<string, number>())
 
@@ -63,6 +63,14 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const realtime = useConversationRealtime(conversationId, onRealtimeEvent, (error) => toast.error(error.message))
   const messages = useMemo(() => (history.data?.pages.flatMap((page) => page.items) ?? []).sort((a, b) => a.sequence - b.sequence), [history.data])
   const newest = messages.at(-1)
+  const {
+    historyRef,
+    bottomRef,
+    unseenMessages,
+    handleScroll,
+    scrollToBottom,
+    loadOlderPreservingPosition,
+  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id)
 
   useEffect(() => {
     if (!newest || newest.sender.id === user?.id || lastReadRef.current === newest.id) return
@@ -70,7 +78,6 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     if (!realtime.sendRead(newest.id)) void messageApi.markRead(conversationId, newest.id)
   }, [conversationId, newest, realtime, user?.id])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: history.isFetching ? 'auto' : 'smooth' }) }, [newest?.id, history.isFetching])
   useEffect(() => () => { typingTimers.current.forEach((timer) => window.clearTimeout(timer)) }, [])
 
   const edit = useMutation({ mutationFn: ({ id, content }: { id: string; content: string }) => messageApi.edit(id, content), onError: (error) => toast.error(getErrorMessage(error)) })
@@ -92,10 +99,11 @@ export function ChatConversation({ conversationId }: { conversationId: string })
 
   return <div className="chat-conversation">
     <header className="chat-header"><Button size="icon" variant="ghost" className="mobile-back" onClick={() => navigate('/')}>Back<ArrowLeft size={19} /></Button><Avatar name={name} src={getConversationAvatar(conversation.data, user?.id)} size="md" online={realtime.status === 'connected'} /><div><h2>{name}</h2><p className={`connection-state is-${realtime.status}`}>{realtime.status === 'connected' ? <Wifi size={10} /> : <WifiOff size={10} />}{realtime.status === 'connected' ? (typingNames.length ? `${typingNames.join(', ')} typing…` : 'Realtime connected') : realtime.status === 'connecting' ? 'Connecting…' : 'Offline · REST fallback enabled'}</p></div><Button size="icon" variant="ghost" onClick={() => setDetailsOpen(true)}>Conversation info<Info size={19} /></Button></header>
-    <div className="message-history">
-      {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void history.fetchNextPage()}>Load older messages</Button>}
+    <div className="message-history" ref={historyRef} onScroll={handleScroll}>
+      {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void loadOlderPreservingPosition(history.fetchNextPage)}>Load older messages</Button>}
       {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
       <div className="message-list">{messages.map((message) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => { if (window.confirm('Delete this message?')) remove.mutate(message.id) }} />)}<div ref={bottomRef} /></div>
+      {unseenMessages > 0 && <Button className="new-message-notice" size="sm" leftIcon={<ArrowDown size={14} />} onClick={() => scrollToBottom()}>{unseenMessages} new {unseenMessages === 1 ? 'message' : 'messages'}</Button>}
     </div>
     {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}
     <MessageComposer replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} onSend={send} onTyping={realtime.sendTyping} disabled={history.isError} />
