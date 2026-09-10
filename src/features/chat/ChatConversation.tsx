@@ -17,7 +17,7 @@ import { messageApi } from './messageApi'
 import { applyMessageEvent, type MessagePages } from './messageCache'
 import { MessageBubble } from './MessageBubble'
 import { MessageComposer } from './MessageComposer'
-import { receiptLabel, type ReadSequences } from './readReceipts'
+import { canMarkConversationRead, receiptLabel, type ReadSequences } from './readReceipts'
 import { useConversationRealtime } from './useConversationRealtime'
 import { useMessageScroll } from './useMessageScroll'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
@@ -31,6 +31,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [readSequences, setReadSequences] = useState<ReadSequences>({})
+  const [pageIsActive, setPageIsActive] = useState(() => document.visibilityState === 'visible' && document.hasFocus())
   const lastReadRef = useRef<string | null>(null)
   const typingTimers = useRef(new Map<string, number>())
 
@@ -80,16 +81,30 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     historyRef,
     bottomRef,
     unseenMessages,
+    isNearBottom,
     handleScroll,
     scrollToBottom,
     loadOlderPreservingPosition,
   } = useMessageScroll(newest?.id, newest?.sender.id === user?.id)
 
   useEffect(() => {
-    if (!newest || newest.sender.id === user?.id || lastReadRef.current === newest.id) return
+    if (!newest || newest.sender.id === user?.id || lastReadRef.current === newest.id
+      || !canMarkConversationRead(isNearBottom, document.visibilityState === 'visible', pageIsActive)) return
     lastReadRef.current = newest.id
     if (!realtime.sendRead(newest.id)) void messageApi.markRead(conversationId, newest.id)
-  }, [conversationId, newest, realtime, user?.id])
+  }, [conversationId, isNearBottom, newest, pageIsActive, realtime, user?.id])
+
+  useEffect(() => {
+    const updatePageActivity = () => setPageIsActive(document.visibilityState === 'visible' && document.hasFocus())
+    window.addEventListener('focus', updatePageActivity)
+    window.addEventListener('blur', updatePageActivity)
+    document.addEventListener('visibilitychange', updatePageActivity)
+    return () => {
+      window.removeEventListener('focus', updatePageActivity)
+      window.removeEventListener('blur', updatePageActivity)
+      document.removeEventListener('visibilitychange', updatePageActivity)
+    }
+  }, [])
 
   useEffect(() => () => { typingTimers.current.forEach((timer) => window.clearTimeout(timer)) }, [])
 

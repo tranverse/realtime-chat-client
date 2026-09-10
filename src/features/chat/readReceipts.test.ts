@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Conversation, ConversationMember } from '../../types/api'
-import { receiptLabel } from './readReceipts'
+import { canMarkConversationRead, receiptLabel } from './readReceipts'
 
 const member = (id: string, lastReadSequence: number | null): ConversationMember => ({
   id: `membership-${id}`,
@@ -27,6 +27,13 @@ const conversation = (type: 'PRIVATE' | 'GROUP', members: ConversationMember[]):
 })
 
 describe('read receipts', () => {
+  it('only marks messages read while the visible conversation is focused at the bottom', () => {
+    expect(canMarkConversationRead(true, true, true)).toBe(true)
+    expect(canMarkConversationRead(false, true, true)).toBe(false)
+    expect(canMarkConversationRead(true, false, true)).toBe(false)
+    expect(canMarkConversationRead(true, true, false)).toBe(false)
+  })
+
   it('labels an own direct message after the other member reads its sequence', () => {
     const direct = conversation('PRIVATE', [member('me', 10), member('reader', 4)])
     expect(receiptLabel(direct, 'me', 'me', 5, { reader: 5 })).toBe('Seen')
