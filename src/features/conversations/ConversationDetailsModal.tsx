@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Copy, Crown, Link2, LogOut, Search, ShieldCheck, UserMinus, UserPlus, X } from 'lucide-react'
+import { Check, Copy, Crown, Link2, LogOut, Search, ShieldCheck, TriangleAlert, UserMinus, UserPlus, X } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ export function ConversationDetailsModal({ conversation, open, onClose }: { conv
   const [avatar, setAvatar] = useState(conversation.avatar ?? '')
   const [memberSearch, setMemberSearch] = useState('')
   const [invite, setInvite] = useState<InviteLink | null>(null)
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(memberSearch)
   const canManage = conversation.myRole === 'OWNER' || conversation.myRole === 'ADMIN'
 
@@ -55,8 +56,8 @@ export function ConversationDetailsModal({ conversation, open, onClose }: { conv
 
   const activeMembers = conversation.members?.filter((member) => member.status === 'ACTIVE') ?? []
 
-  return (
-    <Modal open={open} onClose={onClose} title="Conversation details" description="Members, permissions, and invitation settings." wide>
+  return <>
+    <Modal open={open && !leaveConfirmOpen} onClose={onClose} title="Conversation details" description="Members, permissions, and invitation settings." wide>
       <div className="details-stack">
         <section className="details-identity">
           <Avatar name={getConversationName(conversation, user?.id)} src={avatar || conversation.avatar} size="xl" />
@@ -86,8 +87,20 @@ export function ConversationDetailsModal({ conversation, open, onClose }: { conv
 
         {canManage && requests.data && requests.data.length > 0 && <section className="details-section"><div className="details-section__heading"><div><h3>Join requests</h3><p>Approve the people you recognize.</p></div></div><div className="request-list">{requests.data.map((request) => <div key={request.id}><Avatar name={request.requestedBy.name} src={request.requestedBy.avatar} size="sm" /><span><strong>{request.requestedBy.name}</strong><small>{request.message || 'No message included'}</small></span><Button size="icon" variant="ghost" onClick={() => action.mutate(async () => { await conversationApi.reviewJoinRequest(conversation.id, request.id, false); await requests.refetch() })}>Reject<X size={15} /></Button><Button size="icon" onClick={() => action.mutate(async () => { await conversationApi.reviewJoinRequest(conversation.id, request.id, true); await requests.refetch() })}>Approve<Check size={15} /></Button></div>)}</div></section>}
 
-        {conversation.type === 'GROUP' && conversation.myRole !== 'OWNER' && <section className="danger-zone"><div><h3>Leave conversation</h3><p>You will stop receiving messages from this group.</p></div><Button variant="danger" leftIcon={<LogOut size={15} />} onClick={() => action.mutate(async () => { await conversationApi.leave(conversation.id); onClose(); navigate('/') })}>Leave group</Button></section>}
+        {conversation.type === 'GROUP' && conversation.myRole !== 'OWNER' && <section className="danger-zone"><div><h3>Leave conversation</h3><p>You will stop receiving messages from this group.</p></div><Button variant="danger" leftIcon={<LogOut size={15} />} onClick={() => setLeaveConfirmOpen(true)}>Leave group</Button></section>}
       </div>
     </Modal>
-  )
+    <Modal
+      open={open && leaveConfirmOpen}
+      onClose={() => setLeaveConfirmOpen(false)}
+      title="Leave this group?"
+      description="This action removes you from the conversation."
+      footer={<><Button variant="secondary" onClick={() => setLeaveConfirmOpen(false)}>Cancel</Button><Button variant="danger" loading={action.isPending} leftIcon={<LogOut size={15} />} onClick={() => action.mutate(async () => { await conversationApi.leave(conversation.id); setLeaveConfirmOpen(false); onClose(); navigate('/') })}>Leave group</Button></>}
+    >
+      <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-950">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-100 text-red-600"><TriangleAlert size={20} /></span>
+        <div><p className="font-semibold">You will no longer receive messages from this group.</p><p className="mt-1 text-sm leading-6 text-red-700">You can only return if a member invites you again.</p></div>
+      </div>
+    </Modal>
+  </>
 }

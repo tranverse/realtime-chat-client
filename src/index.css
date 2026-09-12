@@ -590,7 +590,7 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .member-list { display: grid; gap: 4px; }
 .member-row { min-width: 0; padding: 7px; display: flex; align-items: center; gap: 9px; border-radius: 10px; }
 .member-row:hover { background: var(--ink-50); }
-.member-row > span { min-width: 0; flex: 1; display: grid; }
+.member-row > span:not(.avatar) { min-width: 0; flex: 1; display: grid; }
 .member-row strong { overflow: hidden; color: var(--ink-800); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .member-row small { overflow: hidden; color: var(--ink-500); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .role-badge { padding: 3px 6px; display: flex; align-items: center; gap: 3px; color: var(--ink-500); background: var(--ink-100); border-radius: 6px; font-size: 8px; font-style: normal; font-weight: 800; }
