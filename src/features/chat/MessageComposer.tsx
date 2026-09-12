@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { getErrorMessage } from '@/lib/errors'
 import type { ChatMessage, CreateMessagePayload } from '@/types/api'
-import { validateChatImage } from './imageUpload'
+import { limitChatImages, validateChatImage } from './imageUpload'
 import { mediaApi } from './mediaApi'
 
 interface MessageComposerProps {
@@ -36,7 +36,10 @@ export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, d
     setUploading(true)
     setFailedImages([])
     try {
-      const uploaded = await Promise.all(files.map(mediaApi.uploadImage))
+      const results = await Promise.allSettled(files.map(mediaApi.uploadImage))
+      const uploaded = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
+      const rejectedFiles = files.filter((_, index) => results[index].status === 'rejected')
+      if (uploaded.length === 0) throw new Error('None of the selected images could be uploaded.')
       await onSend({
         content: content.trim(),
         type: 'IMAGE',
@@ -46,6 +49,8 @@ export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, d
       setContent('')
       onCancelReply()
       onTyping(false)
+      setFailedImages(rejectedFiles)
+      if (rejectedFiles.length > 0) toast.warning(`${rejectedFiles.length} image${rejectedFiles.length === 1 ? '' : 's'} could not be uploaded. The others were sent.`)
     } catch (error) {
       setFailedImages(files)
       toast.error(getErrorMessage(error, 'Some images could not be sent. You can retry.'))
@@ -57,9 +62,11 @@ export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, d
   function chooseImages(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    const error = files.map(validateChatImage).find(Boolean)
+    const selection = limitChatImages(files)
+    const error = selection.files.map(validateChatImage).find(Boolean)
     if (error) { toast.error(error); return }
-    void sendImages(files.slice(0, 10))
+    if (selection.omitted > 0) toast.warning(`Only 10 images can be sent at once. ${selection.omitted} image${selection.omitted === 1 ? ' was' : 's were'} not selected.`)
+    void sendImages(selection.files)
   }
 
   async function submit(event?: FormEvent) {

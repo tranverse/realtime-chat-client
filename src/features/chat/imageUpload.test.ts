@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateChatImage } from './imageUpload'
+import { limitChatImages, validateChatImage } from './imageUpload'
 
 describe('validateChatImage', () => {
   it('accepts supported images', () => {
@@ -13,5 +13,10 @@ describe('validateChatImage', () => {
   it('rejects images larger than 10 MB', () => {
     const file = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.webp', { type: 'image/webp' })
     expect(validateChatImage(file)).toContain('10 MB')
+  })
+
+  it('limits a message to ten images and reports omitted files', () => {
+    const files = Array.from({ length: 12 }, (_, index) => new File(['image'], `${index}.png`, { type: 'image/png' }))
+    expect(limitChatImages(files)).toEqual({ files: files.slice(0, 10), omitted: 2 })
   })
 })
