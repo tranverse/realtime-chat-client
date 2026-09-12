@@ -37,8 +37,13 @@ describe('read receipts', () => {
   it('labels an own direct message after the other member reads its sequence', () => {
     const direct = conversation('PRIVATE', [member('me', 10), member('reader', 4)])
     expect(receiptLabel(direct, 'me', 'me', 5, { reader: 5 })).toBe('Seen')
-    expect(receiptLabel(direct, 'me', 'me', 6, { reader: 5 })).toBeNull()
+    expect(receiptLabel(direct, 'me', 'me', 6, { reader: 5 })).toBe('Sent')
     expect(receiptLabel(direct, 'me', 'me', 4, {})).toBe('Seen')
+  })
+
+  it('does not show a status under messages sent by another user', () => {
+    const direct = conversation('PRIVATE', [member('me', 1), member('reader', null)])
+    expect(receiptLabel(direct, 'reader', 'me', 1, {})).toBeNull()
   })
 
   it('counts active group readers and ignores the sender', () => {
