@@ -23,6 +23,7 @@ export default function App() {
       <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
       <Route path="/reset-password" element={<PublicOnlyRoute><ResetPasswordPage /></PublicOnlyRoute>} />
       <Route path="/oauth2/callback" element={<OAuthCallbackPage />} />
+      <Route path="/oauth2/redirect" element={<OAuthCallbackPage />} />
       <Route path="/" element={<ProtectedRoute><ChatWorkspacePage /></ProtectedRoute>} />
       <Route path="/chat/:conversationId" element={<ProtectedRoute><ChatWorkspacePage /></ProtectedRoute>} />
       <Route path="/invite/:code" element={<ProtectedRoute><JoinInvitePage /></ProtectedRoute>} />
