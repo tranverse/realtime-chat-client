@@ -99,14 +99,17 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .brand-mark__icon {
   width: 38px;
   height: 38px;
-  border-radius: 13px 13px 13px 5px;
+  position: relative;
+  border: 1px solid #dfe3ff;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  color: var(--white);
-  background: linear-gradient(145deg, var(--primary-500), var(--primary-700));
-  box-shadow: 0 9px 24px rgba(72, 85, 199, 0.26);
+  color: var(--primary-700);
+  background: #f2f3ff;
 }
-.brand-mark__word { font: 800 25px/1 'Manrope', sans-serif; letter-spacing: -1px; }
+.brand-mark__icon > svg { width: 20px; height: 20px; stroke-width: 1.9; }
+.brand-mark__icon > i { width: 5px; height: 5px; position: absolute; right: 7px; bottom: 8px; background: var(--coral-500); border: 1.5px solid #f2f3ff; border-radius: 50%; }
+.brand-mark__word { font: 800 24px/1 'Manrope', sans-serif; letter-spacing: -1px; }
 
 .button {
   border: 0;
@@ -262,7 +265,8 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 }
 .auth-story::after { content: ''; position: absolute; width: 340px; height: 340px; right: -150px; top: 23%; border: 1px solid rgba(255,255,255,.1); border-radius: 45%; transform: rotate(18deg); }
 .auth-story__brand { position: relative; z-index: 1; color: var(--white); }
-.auth-story__brand .brand-mark__icon { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.16); box-shadow: none; backdrop-filter: blur(8px); }
+.auth-story__brand .brand-mark__icon { color: var(--white); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
+.auth-story__brand .brand-mark__icon > i { border-color: #1b2540; }
 .auth-story__content { width: min(520px, 100%); margin: auto 0; position: relative; z-index: 1; }
 .auth-story__badge { width: fit-content; margin-bottom: 25px; padding: 7px 11px; display: inline-flex; align-items: center; gap: 7px; color: #ccd1ff; background: rgba(110, 121, 232, .13); border: 1px solid rgba(139, 148, 237, .23); border-radius: 99px; font-size: 12px; font-weight: 700; }
 .auth-story h1 { margin-bottom: 21px; color: var(--white); font-size: clamp(38px, 4.4vw, 62px); line-height: 1.05; letter-spacing: -3px; }
@@ -331,7 +335,8 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 /* Conversation workspace */
 .chat-workspace { width: 100%; height: 100dvh; min-height: 0; position: fixed; inset: 0; display: grid; grid-template-columns: 72px 340px minmax(0, 1fr); overflow: hidden; background: var(--white); }
 .app-rail { padding: 22px 12px 16px; display: flex; flex-direction: column; align-items: center; background: var(--ink-950); border-right: 1px solid rgba(255,255,255,.04); }
-.app-rail .brand-mark__icon { width: 42px; height: 42px; background: linear-gradient(145deg, #7f88ee, #5966d7); }
+.app-rail .brand-mark__icon { width: 42px; height: 42px; color: #d9dcff; background: #1b2640; border-color: rgba(255,255,255,.1); }
+.app-rail .brand-mark__icon > i { border-color: #1b2640; }
 .app-rail__nav { width: 100%; margin-top: 42px; display: grid; gap: 9px; }
 .app-rail__nav > button, .notification-root > button { width: 100%; height: 52px; position: relative; display: grid; place-items: center; color: #7d889b; background: transparent; border: 0; border-radius: 14px; }
 .app-rail__nav > button > span, .notification-root > button > span { position: absolute; left: 62px; z-index: 5; padding: 7px 10px; color: var(--white); background: var(--ink-800); border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transform: translateX(-5px); transition: opacity 140ms ease, transform 140ms ease; }
