@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Vite serves the application at `http://localhost:5173` and proxies `/api`, `/ws`, and `/oauth2` to the backend. Copy `.env.example` to `.env` only when you need different endpoints.
+Vite serves the application at `http://localhost:5173`. It proxies API, WebSocket, and only the server-side OAuth endpoints to the backend; `/oauth2/callback` remains a React route. Copy `.env.example` to `.env` only when you need different endpoints.
 
 ```env
 VITE_API_BASE_URL=/api/v1
