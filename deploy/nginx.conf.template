@@ -18,7 +18,13 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location /oauth2/ {
+    location ^~ /oauth2/authorization/ {
+        proxy_pass http://${BACKEND_HOST};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /login/oauth2/code/ {
         proxy_pass http://${BACKEND_HOST};
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
