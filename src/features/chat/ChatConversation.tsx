@@ -77,6 +77,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
   )
   const messages = useMemo(() => (history.data?.pages.flatMap((page) => page.items) ?? []).sort((a, b) => a.sequence - b.sequence), [history.data])
   const newest = messages.at(-1)
+  const latestOwnMessageId = messages.findLast((message) => message.sender.id === user?.id)?.id
   const {
     historyRef,
     bottomRef,
@@ -134,7 +135,7 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     <div className="message-history" ref={historyRef} onScroll={handleScroll}>
       {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void loadOlderPreservingPosition(history.fetchNextPage)}>Load older messages</Button>}
       {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
-      <div className="message-list">{messages.map((message, index) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} showAuthor={index === 0 || messages[index - 1].sender.id !== message.sender.id} canDelete={message.sender.id === user?.id || canManage} receipt={receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences)} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => setDeleteTarget(message)} />)}<div ref={bottomRef} /></div>
+      <div className="message-list">{messages.map((message, index) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} showAuthor={index === 0 || messages[index - 1].sender.id !== message.sender.id} canDelete={message.sender.id === user?.id || canManage} receipt={message.id === latestOwnMessageId ? receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences) : null} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => setDeleteTarget(message)} />)}<div ref={bottomRef} /></div>
       {unseenMessages > 0 && <Button className="new-message-notice" size="sm" leftIcon={<ArrowDown size={14} />} onClick={() => scrollToBottom()}>{unseenMessages} new {unseenMessages === 1 ? 'message' : 'messages'}</Button>}
     </div>
     {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}

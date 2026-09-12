@@ -19,6 +19,6 @@ export function receiptLabel(
       && member.user.id !== currentUserId
       && Math.max(readSequences[member.user.id] ?? 0, member.lastReadSequence ?? 0) >= sequence,
   )
-  if (readers.length === 0) return null
+  if (readers.length === 0) return 'Sent'
   return conversation.type === 'PRIVATE' ? 'Seen' : `Read by ${readers.length}`
 }
