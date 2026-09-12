@@ -2,8 +2,9 @@ name: Frontend CI
 
 on:
   push:
-    branches: [main, feature/chat-client-mvp]
+    branches: [main, develop, "feature/**", "fix/**", "chore/**"]
   pull_request:
+    branches: [main, develop]
 
 permissions:
   contents: read
