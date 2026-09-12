@@ -10,6 +10,10 @@ export const authApi = {
     const { data } = await apiClient.post<ApiResponse<AuthTokens>>('/auth/login', payload)
     return data.data
   },
+  async exchangeOAuth2Code(code: string) {
+    const { data } = await apiClient.post<ApiResponse<AuthTokens>>('/auth/oauth2/exchange', { code })
+    return data.data
+  },
   async register(payload: RegisterPayload) {
     const { data } = await apiClient.post<ApiResponse<MessageResponse>>('/auth/register', payload)
     return data.data
