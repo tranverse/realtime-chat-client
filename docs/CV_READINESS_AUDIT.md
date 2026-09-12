@@ -1,6 +1,6 @@
 # CV-readiness frontend audit
 
-Audit date: 2026-09-10
+Audit updated: 2026-09-12
 
 The system-wide audit and stabilization plan lives in the backend repository at
 `docs/CV_READINESS_AUDIT.md`. This file records the client-specific baseline.
@@ -8,21 +8,20 @@ The system-wide audit and stabilization plan lives in the backend repository at
 ## Baseline
 
 - React 19 and TypeScript SPA built with Vite.
-- Lint passes, 5 tests pass and the production build succeeds.
+- Lint, 23 unit/component tests and the production build pass.
+- Google OAuth returns a short-lived one-time code instead of tokens in the callback URL.
 - Authentication refresh requests use a shared single-flight promise.
 - Message-created events are deduplicated by the server-generated message ID.
 - STOMP reconnect reads the latest access token and component cleanup deactivates the
   previous client.
 - Nginx includes SPA fallback plus REST, OAuth and WebSocket proxy locations.
 
-## P0 gaps
+## Remaining production hardening
 
-- `MESSAGES_READ` events are received but not represented in UI state.
-- Loading older pages triggers bottom scrolling rather than preserving viewport position.
-- Reconnect restores subscriptions but does not refetch messages/conversation state to
-  recover events missed while offline.
-- Current tests do not cover send/reconcile, pagination, refresh races or reconnect.
-- The repository has an image-level Docker setup but no system-level Compose command.
+- Move refresh-token persistence from local storage to an HttpOnly, Secure cookie.
+- Add browser-level two-user tests for send, receive, read, reconnect and Google OAuth.
+- Add Cloudinary cleanup when upload succeeds but final message creation fails.
+- File attachments, reactions and calls remain intentionally outside the current MVP.
 
 ## Scope guardrails
 
