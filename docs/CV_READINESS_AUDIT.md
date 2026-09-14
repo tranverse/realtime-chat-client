@@ -8,7 +8,7 @@ The system-wide audit and stabilization plan lives in the backend repository at
 ## Baseline
 
 - React 19 and TypeScript SPA built with Vite.
-- Lint, 23 unit/component tests and the production build pass.
+- Lint, 23 unit/component tests, and the optimized application build pass.
 - Google OAuth returns a short-lived one-time code instead of tokens in the callback URL.
 - Authentication refresh requests use a shared single-flight promise.
 - Message-created events are deduplicated by the server-generated message ID.
@@ -16,7 +16,7 @@ The system-wide audit and stabilization plan lives in the backend repository at
   previous client.
 - Nginx includes SPA fallback plus REST, OAuth and WebSocket proxy locations.
 
-## Remaining production hardening
+## Remaining hardening
 
 - Move refresh-token persistence from local storage to an HttpOnly, Secure cookie.
 - Add browser-level two-user tests for send, receive, read, reconnect and Google OAuth.

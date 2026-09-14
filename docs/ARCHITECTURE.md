@@ -39,8 +39,8 @@ When the socket is temporarily unavailable, sending and read receipts fall back 
 
 ## Attachment boundary
 
-The backend MVP accepts attachment URL metadata rather than binary uploads. The composer exposes that capability honestly as a public URL field. Direct object-storage upload with pre-signed URLs remains a future feature; the SPA does not pretend that local file upload already exists.
+The composer accepts JPEG, PNG, WebP, and GIF files from the user's device. It validates a 10 MB per-image limit and a maximum of ten images per message, then uploads each file as multipart data to the authenticated backend endpoint `/api/v1/media/images`. The backend returns Cloudinary metadata, which the client includes in the message payload. Partial upload failures keep the failed files available for retry while successfully uploaded images are sent.
 
-## Deployment
+## Container packaging
 
-The production image builds static assets and serves them from Nginx. The same Nginx process provides SPA route fallback and proxies REST, OAuth, SockJS, and native WebSocket traffic to `BACKEND_HOST`. Static frontend delivery does not change the backend from a modular monolith into microservices.
+The included Dockerfile builds static assets and serves them from Nginx. The Nginx template provides SPA route fallback and proxy configuration for REST, OAuth, SockJS, and native WebSocket traffic. These files are a local container-packaging option.
