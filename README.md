@@ -1,6 +1,6 @@
 # Luma Realtime Chat Client
 
-Luma is a portfolio-ready realtime chat frontend built as a React single-page application. It consumes the REST and STOMP contracts from [`realtime-chat-server`](https://github.com/tranverse/realtime-chat-server), a Spring Boot modular monolith.
+Luma is the React single-page frontend for a full-stack realtime chat MVP. It consumes the REST and STOMP contracts from [`realtime-chat-server`](https://github.com/tranverse/realtime-chat-server), a Spring Boot modular monolith.
 
 ## Highlights
 
@@ -9,11 +9,10 @@ Luma is a portfolio-ready realtime chat frontend built as a React single-page ap
 - Realtime STOMP messaging with authenticated reconnect, typing indicators, read receipts, replies, editing, deletion, and REST fallback.
 - Cursor-based history, TanStack Query cache synchronization, route-level code splitting, responsive mobile layout, and accessible UI states.
 - Profile management and session revocation.
-- Production Docker image with Nginx SPA fallback and REST/WebSocket reverse proxy.
 
 ## Stack
 
-React 19, TypeScript, Vite, React Router, TanStack Query, Axios, STOMP.js, SockJS, Zod, Lucide, Vitest, Testing Library, and plain CSS.
+React 19, TypeScript, Vite, Tailwind CSS 4, React Router, TanStack Query, Axios, STOMP.js, SockJS, Zod, Lucide, Vitest, Testing Library, and project-specific CSS.
 
 This repository intentionally does **not** use Next.js. The browser application is a static SPA; all business logic remains in the Spring Boot monolith.
 
@@ -43,24 +42,9 @@ npm run test
 npm run build
 ```
 
-## Docker
+## Development workflow
 
-```bash
-docker build -t luma-chat-client .
-docker run --rm -p 3000:80 -e BACKEND_HOST=host.docker.internal:8080 luma-chat-client
-```
-
-Open `http://localhost:3000`. In a Compose network, set `BACKEND_HOST` to the backend service name, for example `chat-server:8080`.
-
-## Git branches
-
-| Branch | Responsibility |
-| --- | --- |
-| `chore/frontend-foundation` | Vite/TypeScript setup, design system, API types, test foundation |
-| `feature/authentication-ui` | Authentication, OAuth callback, refresh-token handling |
-| `feature/conversation-management` | Conversation, membership, invitation, and profile features |
-| `feature/realtime-messaging` | History, STOMP events, composer, replies, edits, deletes, read/typing state |
-| `chore/frontend-delivery` | Docker, CI, branding, and documentation |
-| `feature/chat-client-mvp` | Integration branch containing the complete MVP |
+Changes are developed on focused feature, fix, test, or documentation branches, merged
+through `develop`, and then integrated into `main`.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the client structure and backend integration decisions.
