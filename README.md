@@ -42,6 +42,9 @@ npm run test
 npm run build
 ```
 
+The Vitest suite includes unit and component coverage plus integration tests for the
+authentication provider, token persistence, protected routing, and API boundary.
+
 ## Development workflow
 
 Changes are developed on focused feature, fix, test, or documentation branches, merged
