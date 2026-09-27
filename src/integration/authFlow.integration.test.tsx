@@ -92,4 +92,28 @@ describe('authentication flow integration', () => {
     expect(await screen.findByRole('heading', { name: 'Protected chat' })).toBeInTheDocument()
     await waitFor(() => expect(me).toHaveBeenCalledOnce())
   })
+
+  it('clears invalid persisted tokens and returns to login when profile restore fails', async () => {
+    tokenStore.set({ accessToken: 'expired-access', refreshToken: 'expired-refresh' })
+    vi.spyOn(authApi, 'me').mockRejectedValue(new Error('Session expired'))
+
+    renderAuthFlow('/chat/conversation-1')
+
+    expect(screen.getByText('Restoring your session…')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in to Luma' })).toBeInTheDocument()
+    expect(tokenStore.getAccessToken()).toBeNull()
+    expect(tokenStore.getRefreshToken()).toBeNull()
+  })
+
+  it('leaves a protected route when the shared API client reports session expiration', async () => {
+    tokenStore.set({ accessToken: 'access-token', refreshToken: 'refresh-token' })
+    vi.spyOn(authApi, 'me').mockResolvedValue(user)
+
+    renderAuthFlow('/')
+    expect(await screen.findByRole('heading', { name: 'Protected chat' })).toBeInTheDocument()
+
+    window.dispatchEvent(new Event('luma:session-expired'))
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to Luma' })).toBeInTheDocument()
+  })
 })
