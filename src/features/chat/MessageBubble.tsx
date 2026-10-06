@@ -103,7 +103,7 @@ export function MessageBubble({
             {deleted ? (
               <p>Message deleted</p>
             ) : (
-              message.content && <p>{message.content}</p>
+              message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>
             )}
             <ImageMessage attachments={message.attachments} />
             {message.attachments.some(

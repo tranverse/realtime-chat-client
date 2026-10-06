@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { LogOut, ShieldOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AvatarUpload } from "../../components/ui/AvatarUpload";
 import { Button } from "../../components/ui/Button";
@@ -13,11 +13,15 @@ import { userApi } from "./userApi";
 export function ProfileModal({
   open,
   onClose,
+  section = 'profile',
 }: {
   open: boolean;
   onClose: () => void;
+  section?: 'profile' | 'sessions';
 }) {
   const { user, refreshUser, logout, logoutAll } = useAuth();
+  const sessionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (open && section === 'sessions') sessionsRef.current?.scrollIntoView({ block: 'center' }); }, [open, section]);
   const [form, setForm] = useState(() => ({
     name: user?.name ?? "",
     username: user?.username ?? "",
@@ -104,7 +108,7 @@ export function ProfileModal({
           <FormField label="Date of birth" type="date" {...bind("dob")} />
         </div>
       </div>
-      <div className="session-actions">
+      <div className="session-actions" ref={sessionsRef}>
         <div>
           <strong>Signed-in sessions</strong>
           <p>Sign out on this device or revoke every refresh token.</p>

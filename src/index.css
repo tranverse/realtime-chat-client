@@ -1,5 +1,57 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Shared surface palette keeps authentication, workspace, dialogs and legacy forms consistent. */
+:root.dark {
+  --ink-950: #f8fafc;
+  --ink-900: #e2e8f0;
+  --ink-800: #cbd5e1;
+  --ink-700: #b6c2d3;
+  --ink-600: #a4b1c5;
+  --ink-500: #94a3b8;
+  --ink-400: #8293ad;
+  --ink-300: #475569;
+  --ink-200: #334155;
+  --ink-100: #243247;
+  --ink-50: #0b1220;
+  --primary-700: #c7d2fe;
+  --primary-600: #818cf8;
+  --primary-100: #282f59;
+  --primary-50: #1b2340;
+  --danger-100: #4b202e;
+  --amber-100: #422f1b;
+  --amber-600: #fbbf24;
+  --teal-100: #123d37;
+  --teal-600: #34d399;
+}
+
+@layer utilities {
+  .dark .bg-white { background-color: #111c30; }
+  .dark .bg-slate-50, .dark .bg-slate-50\/70 { background-color: #0b1220; }
+  .dark .bg-slate-100 { background-color: #1e2b40; }
+  .dark .bg-slate-200 { background-color: #334155; }
+  .dark .bg-indigo-50, .dark .bg-indigo-50\/40 { background-color: #252b50; }
+  .dark .bg-indigo-100 { background-color: #303764; }
+  .dark .bg-red-50 { background-color: #3b1e2a; }
+  .dark .border-slate-100, .dark .border-slate-200 { border-color: #2b3a50; }
+  .dark .border-indigo-100, .dark .border-indigo-200 { border-color: #404b7a; }
+  .dark .border-red-100 { border-color: #633345; }
+  .dark .text-slate-950, .dark .text-slate-900 { color: #f1f5f9; }
+  .dark .text-slate-800, .dark .text-slate-700 { color: #d0daea; }
+  .dark .text-slate-600, .dark .text-slate-500 { color: #a4b1c5; }
+  .dark .text-indigo-600, .dark .text-indigo-700 { color: #a5b4fc; }
+  .dark .text-red-700 { color: #fda4af; }
+  .dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #23314a; }
+  .dark .hover\:text-slate-950:hover, .dark .hover\:text-slate-800:hover { color: #f8fafc; }
+  .dark .focus-visible\:ring-offset-2:focus-visible { --tw-ring-offset-color: #111c30; }
+}
+
+.dark .field__control input, .dark .field__control textarea,
+.dark .google-button, .dark .otp-inputs input, .dark .type-switch button.is-active,
+.dark .member-actions select, .dark .invite-page > section { background: #111c30; }
+.dark .auth-panel { background: linear-gradient(145deg, #111c30, #0b1220); }
+.dark .danger-zone { background: #301c29; }
 
 :root {
   color-scheme: light;
