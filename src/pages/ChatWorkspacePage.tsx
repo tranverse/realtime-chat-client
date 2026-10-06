@@ -9,20 +9,32 @@ import { CreateConversationModal } from "../features/conversations/CreateConvers
 import { ProfileModal } from "../features/profile/ProfileModal";
 import { NotificationsPanel } from "../features/notifications/NotificationsPanel";
 import { SettingsPanel } from "../features/settings/SettingsPanel";
+import { useChatPreferences } from "../features/settings/preferences";
 
 export function ChatWorkspacePage() {
   const { conversationId } = useParams();
   const [createOpen, setCreateOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileSection, setProfileSection] = useState<"profile" | "sessions">(
+    "profile",
+  );
+  const { preferences } = useChatPreferences();
   const [view, setView] = useState<WorkspaceView>("messages");
+  const activeView =
+    view === "notifications" && !preferences.inAppNotifications
+      ? "messages"
+      : view;
   return (
     <main className="flex h-dvh min-h-0 overflow-hidden bg-white pb-16 text-slate-950 md:pb-0">
       <AppRail
-        view={view}
+        view={activeView}
         onView={setView}
-        onProfile={() => setProfileOpen(true)}
+        onProfile={() => {
+          setProfileSection("profile");
+          setProfileOpen(true);
+        }}
       />
-      {view === "messages" && (
+      {activeView === "messages" && (
         <>
           <div
             className={
@@ -52,17 +64,33 @@ export function ChatWorkspacePage() {
           </section>
         </>
       )}
-      {view === "notifications" && (
+      {activeView === "notifications" && (
         <NotificationsPanel onSelect={() => setView("messages")} />
       )}
-      {view === "settings" && (
-        <SettingsPanel onProfile={() => setProfileOpen(true)} />
+      {activeView === "settings" && (
+        <SettingsPanel
+          onProfile={() => {
+            setProfileSection("profile");
+            setProfileOpen(true);
+          }}
+          onSessions={() => {
+            setProfileSection("sessions");
+            setProfileOpen(true);
+          }}
+        />
       )}
       <CreateConversationModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
       />
-      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      {profileOpen && (
+        <ProfileModal
+          key={profileSection}
+          open
+          onClose={() => setProfileOpen(false)}
+          section={profileSection}
+        />
+      )}
     </main>
   );
 }

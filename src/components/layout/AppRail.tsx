@@ -2,6 +2,7 @@ import { Bell, MessageCircle, Settings } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { BrandMark } from "../brand/BrandMark";
 import { useAuth } from "../../features/auth/useAuth";
+import { useChatPreferences } from "../../features/settings/preferences";
 
 export type WorkspaceView = "messages" | "notifications" | "settings";
 
@@ -15,9 +16,12 @@ export function AppRail({
   onProfile: () => void;
 }) {
   const { user } = useAuth();
+  const { preferences } = useChatPreferences();
   const items = [
     { id: "messages" as const, label: "Messages", icon: MessageCircle },
-    { id: "notifications" as const, label: "Notifications", icon: Bell },
+    ...(preferences.inAppNotifications
+      ? [{ id: "notifications" as const, label: "Notifications", icon: Bell }]
+      : []),
     { id: "settings" as const, label: "Settings", icon: Settings },
   ];
   return (
@@ -49,7 +53,7 @@ export function AppRail({
           onClick={onProfile}
           aria-label="Open profile"
         >
-          <Avatar name={user.name} src={user.avatar} size="sm" online />
+          <Avatar name={user.name} src={user.avatar} size="sm" />
         </button>
       )}
     </nav>
