@@ -5,9 +5,9 @@ import { BrandMark } from './BrandMark'
 describe('BrandMark', () => {
   it('shows the product name unless compact', () => {
     const { rerender } = render(<BrandMark />)
-    expect(screen.getByText('luma')).toBeInTheDocument()
+    expect(screen.getByText('Realtime Chat')).toBeInTheDocument()
 
     rerender(<BrandMark compact />)
-    expect(screen.queryByText('luma')).not.toBeInTheDocument()
+    expect(screen.queryByText('Realtime Chat')).not.toBeInTheDocument()
   })
 })

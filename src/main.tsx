@@ -7,14 +7,14 @@ import './index.css'
 import App from './App'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { queryClient } from './lib/queryClient'
+import { RealtimeProvider } from './features/realtime/RealtimeProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster position="top-right" richColors closeButton />
+          <RealtimeProvider><App /><Toaster position="top-right" richColors closeButton /></RealtimeProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -1,83 +1,176 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, Info, Wifi, WifiOff } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
-import { Avatar } from '../../components/ui/Avatar'
-import { Button } from '../../components/ui/Button'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { Spinner } from '../../components/ui/Spinner'
-import { getErrorMessage } from '../../lib/errors'
-import type { ChatEvent, ChatMessage, CreateMessagePayload, TypingEvent } from '../../types/api'
-import { useAuth } from '../auth/useAuth'
-import { ConversationDetailsModal } from '../conversations/ConversationDetailsModal'
-import { conversationApi } from '../conversations/conversationApi'
-import { getConversationAvatar, getConversationName } from '../conversations/conversationUtils'
-import { messageApi } from './messageApi'
-import { applyMessageEvent, type MessagePages } from './messageCache'
-import { MessageBubble } from './MessageBubble'
-import { MessageComposer } from './MessageComposer'
-import { canMarkConversationRead, receiptLabel, type ReadSequences } from './readReceipts'
-import { useConversationRealtime } from './useConversationRealtime'
-import { useMessageScroll } from './useMessageScroll'
-import { DeleteMessageDialog } from './DeleteMessageDialog'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { ArrowDown, ArrowLeft, Info, Wifi, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Avatar } from "../../components/ui/Avatar";
+import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Spinner } from "../../components/ui/Spinner";
+import { getErrorMessage } from "../../lib/errors";
+import type {
+  ChatEvent,
+  ChatMessage,
+  CreateMessagePayload,
+  TypingEvent,
+} from "../../types/api";
+import { useAuth } from "../auth/useAuth";
+import { ConversationDetailsModal } from "../conversations/ConversationDetailsModal";
+import { conversationApi } from "../conversations/conversationApi";
+import {
+  getConversationAvatar,
+  getConversationName,
+  getConversationParticipantsLabel,
+} from "../conversations/conversationUtils";
+import { useChatPreferences } from "../settings/preferences";
+import { messageApi } from "./messageApi";
+import { applyMessageEvent, type MessagePages } from "./messageCache";
+import { MessageBubble } from "./MessageBubble";
+import { MessageComposer } from "./MessageComposer";
+import {
+  canMarkConversationRead,
+  receiptLabel,
+  type ReadSequences,
+} from "./readReceipts";
+import { useConversationRealtime } from "./useConversationRealtime";
+import { useMessageScroll } from "./useMessageScroll";
+import { DeleteMessageDialog } from "./DeleteMessageDialog";
 
-export function ChatConversation({ conversationId }: { conversationId: string }) {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null)
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
-  const [readSequences, setReadSequences] = useState<ReadSequences>({})
-  const [pageIsActive, setPageIsActive] = useState(() => document.visibilityState === 'visible' && document.hasFocus())
-  const lastReadRef = useRef<string | null>(null)
-  const typingTimers = useRef(new Map<string, number>())
+export function ChatConversation({
+  conversationId,
+}: {
+  conversationId: string;
+}) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [readSequences, setReadSequences] = useState<ReadSequences>({});
+  const [connectionNotice, setConnectionNotice] = useState<
+    "hidden" | "reconnecting" | "offline"
+  >("hidden");
+  const { preferences } = useChatPreferences();
+  const [pageIsActive, setPageIsActive] = useState(
+    () => document.visibilityState === "visible" && document.hasFocus(),
+  );
+  const lastReadRef = useRef<string | null>(null);
+  const typingTimers = useRef(new Map<string, number>());
 
-  const conversation = useQuery({ queryKey: ['conversation', conversationId], queryFn: () => conversationApi.detail(conversationId) })
+  const conversation = useQuery({
+    queryKey: ["conversation", conversationId],
+    queryFn: () => conversationApi.detail(conversationId),
+  });
   const history = useInfiniteQuery({
-    queryKey: ['messages', conversationId],
+    queryKey: ["messages", conversationId],
     queryFn: ({ pageParam }) => messageApi.history(conversationId, pageParam),
     initialPageParam: undefined as number | undefined,
-    getNextPageParam: (page) => page.hasNext ? Math.min(...page.items.map((message) => message.sequence)) : undefined,
-  })
+    getNextPageParam: (page) =>
+      page.hasNext
+        ? Math.min(...page.items.map((message) => message.sequence))
+        : undefined,
+  });
 
-  const onRealtimeEvent = useCallback((event: ChatEvent | TypingEvent) => {
-    if (event.type === 'TYPING') {
-      if (event.actorUserId === user?.id) return
-      setTypingUsers((current) => { const next = new Set(current); if (event.typing) next.add(event.actorUserId); else next.delete(event.actorUserId); return next })
-      window.clearTimeout(typingTimers.current.get(event.actorUserId))
-      if (event.typing) typingTimers.current.set(event.actorUserId, window.setTimeout(() => setTypingUsers((current) => { const next = new Set(current); next.delete(event.actorUserId); return next }), 2_500))
-      return
-    }
-    if (event.type === 'MESSAGES_READ') {
-      setReadSequences((current) => ({
-        ...current,
-        [event.actorUserId]: Math.max(current[event.actorUserId] ?? 0, event.sequence),
-      }))
-      return
-    }
-    queryClient.setQueryData<MessagePages>(['messages', conversationId], (current) => applyMessageEvent(current, event))
-    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
-  }, [conversationId, queryClient, user?.id])
+  const onRealtimeEvent = useCallback(
+    (event: ChatEvent | TypingEvent) => {
+      if (event.type === "TYPING") {
+        if (event.actorUserId === user?.id) return;
+        setTypingUsers((current) => {
+          const next = new Set(current);
+          if (event.typing) next.add(event.actorUserId);
+          else next.delete(event.actorUserId);
+          return next;
+        });
+        window.clearTimeout(typingTimers.current.get(event.actorUserId));
+        if (event.typing)
+          typingTimers.current.set(
+            event.actorUserId,
+            window.setTimeout(
+              () =>
+                setTypingUsers((current) => {
+                  const next = new Set(current);
+                  next.delete(event.actorUserId);
+                  return next;
+                }),
+              2_500,
+            ),
+          );
+        return;
+      }
+      if (event.type === "MESSAGES_READ") {
+        setReadSequences((current) => ({
+          ...current,
+          [event.actorUserId]: Math.max(
+            current[event.actorUserId] ?? 0,
+            event.sequence,
+          ),
+        }));
+        return;
+      }
+      queryClient.setQueryData<MessagePages>(
+        ["messages", conversationId],
+        (current) => applyMessageEvent(current, event),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["conversation", conversationId],
+      });
+    },
+    [conversationId, queryClient, user?.id],
+  );
 
   const onRealtimeConnected = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-    void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
-    void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-  }, [conversationId, queryClient])
+    void queryClient.invalidateQueries({
+      queryKey: ["messages", conversationId],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["conversation", conversationId],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+  }, [conversationId, queryClient]);
 
   const realtime = useConversationRealtime(
     conversationId,
     onRealtimeEvent,
     (error) => toast.error(error.message),
     onRealtimeConnected,
-  )
-  const messages = useMemo(() => (history.data?.pages.flatMap((page) => page.items) ?? []).sort((a, b) => a.sequence - b.sequence), [history.data])
-  const newest = messages.at(-1)
-  const latestOwnMessageId = messages.findLast((message) => message.sender.id === user?.id)?.id
+  );
+  useEffect(() => {
+    if (realtime.status === "connected") {
+      setConnectionNotice("hidden");
+      return;
+    }
+    const reconnectingTimer = window.setTimeout(
+      () => setConnectionNotice("reconnecting"),
+      800,
+    );
+    const offlineTimer = window.setTimeout(
+      () => setConnectionNotice("offline"),
+      8_000,
+    );
+    return () => {
+      window.clearTimeout(reconnectingTimer);
+      window.clearTimeout(offlineTimer);
+    };
+  }, [realtime.status]);
+  const messages = useMemo(
+    () =>
+      (history.data?.pages.flatMap((page) => page.items) ?? []).sort(
+        (a, b) => a.sequence - b.sequence,
+      ),
+    [history.data],
+  );
+  const newest = messages.at(-1);
+  const latestOwnMessageId = messages.findLast(
+    (message) => message.sender.id === user?.id,
+  )?.id;
   const {
     historyRef,
     bottomRef,
@@ -86,61 +179,236 @@ export function ChatConversation({ conversationId }: { conversationId: string })
     handleScroll,
     scrollToBottom,
     loadOlderPreservingPosition,
-  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id)
+  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id);
 
   useEffect(() => {
-    if (!newest || newest.sender.id === user?.id || lastReadRef.current === newest.id
-      || !canMarkConversationRead(isNearBottom, document.visibilityState === 'visible', pageIsActive)) return
-    lastReadRef.current = newest.id
-    if (!realtime.sendRead(newest.id)) void messageApi.markRead(conversationId, newest.id)
-  }, [conversationId, isNearBottom, newest, pageIsActive, realtime, user?.id])
+    if (
+      !newest ||
+      newest.sender.id === user?.id ||
+      lastReadRef.current === newest.id ||
+      !canMarkConversationRead(
+        isNearBottom,
+        document.visibilityState === "visible",
+        pageIsActive,
+      )
+    )
+      return;
+    lastReadRef.current = newest.id;
+    if (!realtime.sendRead(newest.id))
+      void messageApi.markRead(conversationId, newest.id);
+  }, [conversationId, isNearBottom, newest, pageIsActive, realtime, user?.id]);
 
   useEffect(() => {
-    const updatePageActivity = () => setPageIsActive(document.visibilityState === 'visible' && document.hasFocus())
-    window.addEventListener('focus', updatePageActivity)
-    window.addEventListener('blur', updatePageActivity)
-    document.addEventListener('visibilitychange', updatePageActivity)
+    const updatePageActivity = () =>
+      setPageIsActive(
+        document.visibilityState === "visible" && document.hasFocus(),
+      );
+    window.addEventListener("focus", updatePageActivity);
+    window.addEventListener("blur", updatePageActivity);
+    document.addEventListener("visibilitychange", updatePageActivity);
     return () => {
-      window.removeEventListener('focus', updatePageActivity)
-      window.removeEventListener('blur', updatePageActivity)
-      document.removeEventListener('visibilitychange', updatePageActivity)
-    }
-  }, [])
+      window.removeEventListener("focus", updatePageActivity);
+      window.removeEventListener("blur", updatePageActivity);
+      document.removeEventListener("visibilitychange", updatePageActivity);
+    };
+  }, []);
 
-  useEffect(() => () => { typingTimers.current.forEach((timer) => window.clearTimeout(timer)) }, [])
+  useEffect(
+    () => () => {
+      typingTimers.current.forEach((timer) => window.clearTimeout(timer));
+    },
+    [],
+  );
 
-  const edit = useMutation({ mutationFn: ({ id, content }: { id: string; content: string }) => messageApi.edit(id, content), onError: (error) => toast.error(getErrorMessage(error)) })
+  const edit = useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) =>
+      messageApi.edit(id, content),
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
   const remove = useMutation({
     mutationFn: (id: string) => messageApi.remove(id),
     onSuccess: () => setDeleteTarget(null),
     onError: (error) => toast.error(getErrorMessage(error)),
-  })
+  });
 
   async function send(payload: CreateMessagePayload) {
-    if (realtime.sendMessage(payload)) return
+    if (realtime.sendMessage(payload)) return;
     try {
-      const created = await messageApi.send(conversationId, payload)
-      onRealtimeEvent({ type: 'MESSAGE_CREATED', conversationId, actorUserId: created.sender.id, messageId: created.id, sequence: created.sequence, message: created })
-    } catch (error) { toast.error(getErrorMessage(error)); throw error }
+      const created = await messageApi.send(conversationId, payload);
+      onRealtimeEvent({
+        type: "MESSAGE_CREATED",
+        conversationId,
+        actorUserId: created.sender.id,
+        messageId: created.id,
+        sequence: created.sequence,
+        message: created,
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      throw error;
+    }
   }
 
-  if (conversation.isLoading || history.isLoading) return <Spinner label="Opening conversation…" className="stage-spinner" />
-  if (!conversation.data) return <EmptyState icon={<WifiOff size={26} />} title="Conversation unavailable" description="It may have been removed or you may no longer be a member." action={<Button variant="secondary" onClick={() => navigate('/')}>Back to messages</Button>} />
-  const name = getConversationName(conversation.data, user?.id)
-  const canManage = conversation.data.myRole === 'OWNER' || conversation.data.myRole === 'ADMIN'
-  const typingNames = conversation.data.members?.filter((member) => typingUsers.has(member.user.id)).map((member) => member.user.name.split(' ')[0]) ?? []
+  if (conversation.isLoading || history.isLoading)
+    return <Spinner label="Opening conversation…" className="stage-spinner" />;
+  if (!conversation.data)
+    return (
+      <EmptyState
+        icon={<WifiOff size={26} />}
+        title="Conversation unavailable"
+        description="It may have been removed or you may no longer be a member."
+        action={
+          <Button variant="secondary" onClick={() => navigate("/")}>
+            Back to messages
+          </Button>
+        }
+      />
+    );
+  const name = getConversationName(conversation.data, user?.id);
+  const canManage =
+    conversation.data.myRole === "OWNER" ||
+    conversation.data.myRole === "ADMIN";
+  const typingNames =
+    conversation.data.members
+      ?.filter((member) => typingUsers.has(member.user.id))
+      .map((member) => member.user.name.split(" ")[0]) ?? [];
 
-  return <div className="chat-conversation">
-    <header className="chat-header"><Button size="icon" variant="ghost" className="mobile-back" onClick={() => navigate('/')}>Back<ArrowLeft size={19} /></Button><Avatar name={name} src={getConversationAvatar(conversation.data, user?.id)} size="md" /><div><h2>{name}</h2><p className={`connection-state is-${realtime.status}`}>{realtime.status === 'connected' ? <Wifi size={10} /> : <WifiOff size={10} />}{realtime.status === 'connected' ? (typingNames.length ? `${typingNames.join(', ')} typing…` : 'Connected') : realtime.status === 'connecting' ? 'Connecting…' : 'Offline · REST fallback enabled'}</p></div><Button size="icon" variant="ghost" onClick={() => setDetailsOpen(true)}>Conversation info<Info size={19} /></Button></header>
-    <div className="message-history" ref={historyRef} onScroll={handleScroll}>
-      {history.hasNextPage && <Button className="load-older" size="sm" variant="secondary" loading={history.isFetchingNextPage} leftIcon={<ArrowDown size={14} />} onClick={() => void loadOlderPreservingPosition(history.fetchNextPage)}>Load older messages</Button>}
-      {messages.length === 0 && <EmptyState icon={<Wifi size={26} />} title="Say hello" description="This conversation is ready for its first message." />}
-      <div className="message-list">{messages.map((message, index) => <MessageBubble key={message.id} message={message} mine={message.sender.id === user?.id} showAuthor={index === 0 || messages[index - 1].sender.id !== message.sender.id} canDelete={message.sender.id === user?.id || canManage} receipt={message.id === latestOwnMessageId ? receiptLabel(conversation.data, message.sender.id, user?.id, message.sequence, readSequences) : null} onReply={() => setReplyingTo(message)} onEdit={(content) => edit.mutate({ id: message.id, content })} onDelete={() => setDeleteTarget(message)} />)}<div ref={bottomRef} /></div>
-      {unseenMessages > 0 && <Button className="new-message-notice" size="sm" leftIcon={<ArrowDown size={14} />} onClick={() => scrollToBottom()}>{unseenMessages} new {unseenMessages === 1 ? 'message' : 'messages'}</Button>}
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <header className="z-10 flex h-[72px] shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 sm:px-5">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="md:hidden"
+          onClick={() => navigate("/")}
+        >
+          Back
+          <ArrowLeft size={19} />
+        </Button>
+        <Avatar
+          name={name}
+          src={getConversationAvatar(conversation.data, user?.id)}
+          size="md"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-semibold text-slate-950 sm:text-base">
+            {name}
+          </h2>
+          <p
+            className={`mt-0.5 flex items-center gap-1 text-xs ${connectionNotice !== "hidden" ? "text-amber-600" : "text-slate-500"}`}
+          >
+            {connectionNotice === "offline" ? <WifiOff size={11} /> : connectionNotice === "reconnecting" ? <Wifi size={11} /> : null}
+            {typingNames.length
+              ? `${typingNames.join(", ")} typing…`
+              : connectionNotice !== "hidden"
+                ? connectionNotice === "reconnecting" ? "Reconnecting…" : "Offline · messages will use REST"
+                : getConversationParticipantsLabel(conversation.data, user?.id)}
+          </p>
+        </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setDetailsOpen(true)}
+        >
+          Conversation info
+          <Info size={19} />
+        </Button>
+      </header>
+      <div
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-5 sm:px-6"
+        ref={historyRef}
+        onScroll={handleScroll}
+      >
+        {history.hasNextPage && (
+          <div className="mb-5 flex justify-center">
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={history.isFetchingNextPage}
+              leftIcon={<ArrowDown size={14} />}
+              onClick={() =>
+                void loadOlderPreservingPosition(history.fetchNextPage)
+              }
+            >
+              Load older messages
+            </Button>
+          </div>
+        )}
+        {messages.length === 0 && (
+          <EmptyState
+            icon={<Wifi size={26} />}
+            title="Say hello"
+            description="This conversation is ready for its first message."
+          />
+        )}
+        <div className={`mx-auto flex w-full max-w-5xl flex-col ${preferences.density === "compact" ? "gap-0" : "gap-1"}`}>
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              mine={message.sender.id === user?.id}
+              showAuthor={
+                index === 0 ||
+                messages[index - 1].sender.id !== message.sender.id
+              }
+              canDelete={message.sender.id === user?.id || canManage}
+              receipt={
+                message.id === latestOwnMessageId
+                  ? receiptLabel(
+                      conversation.data,
+                      message.sender.id,
+                      user?.id,
+                      message.sequence,
+                      readSequences,
+                    )
+                  : null
+              }
+              onReply={() => setReplyingTo(message)}
+              onEdit={(content) => edit.mutate({ id: message.id, content })}
+              onDelete={() => setDeleteTarget(message)}
+            />
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        {unseenMessages > 0 && (
+          <Button
+            className="sticky bottom-2 left-1/2 z-10 -translate-x-1/2 shadow-lg"
+            size="sm"
+            leftIcon={<ArrowDown size={14} />}
+            onClick={() => scrollToBottom()}
+          >
+            {unseenMessages} new {unseenMessages === 1 ? "message" : "messages"}
+          </Button>
+        )}
+      </div>
+      <div className="h-6 shrink-0 bg-white px-5 text-xs text-slate-400">
+        {typingNames.length > 0 && (
+          <span>
+            {typingNames.join(", ")} {typingNames.length === 1 ? "is" : "are"}{" "}
+            typing…
+          </span>
+        )}
+      </div>
+      <MessageComposer
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+        onSend={send}
+        onTyping={realtime.sendTyping}
+        disabled={history.isError}
+      />
+      <ConversationDetailsModal
+        conversation={conversation.data}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+      />
+      <DeleteMessageDialog
+        message={deleteTarget}
+        deleting={remove.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) remove.mutate(deleteTarget.id);
+        }}
+      />
     </div>
-    {typingNames.length > 0 && <div className="typing-indicator"><span><i /><i /><i /></span>{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing</div>}
-    <MessageComposer replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} onSend={send} onTyping={realtime.sendTyping} disabled={history.isError} />
-    <ConversationDetailsModal conversation={conversation.data} open={detailsOpen} onClose={() => setDetailsOpen(false)} />
-    <DeleteMessageDialog message={deleteTarget} deleting={remove.isPending} onClose={() => setDeleteTarget(null)} onConfirm={() => { if (deleteTarget) remove.mutate(deleteTarget.id) }} />
-  </div>
+  );
 }

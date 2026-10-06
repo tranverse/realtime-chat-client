@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FiChevronLeft, FiChevronRight, FiImage, FiX } from 'react-icons/fi'
+import { ChevronLeft, ChevronRight, Image, X } from 'lucide-react'
 import type { Attachment } from '@/types/api'
 
 export function ImageMessage({ attachments }: { attachments: Attachment[] }) {
@@ -24,10 +24,10 @@ export function ImageMessage({ attachments }: { attachments: Attachment[] }) {
       {visible.map((image, index) => <ImageTile key={image.id ?? image.fileUrl} image={image} onClick={() => setActiveIndex(index)} overlay={index === 3 && images.length > 4 ? `+${images.length - 4}` : undefined} />)}
     </div>
     {activeIndex !== null && <div className="image-viewer" role="dialog" aria-modal="true" aria-label="Image viewer" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveIndex(null) }}>
-      <button type="button" className="image-viewer__close" aria-label="Close image viewer" title="Close" onClick={() => setActiveIndex(null)}><FiX /></button>
-      {images.length > 1 && <button type="button" className="image-viewer__previous" aria-label="Previous image" title="Previous image" onClick={() => setActiveIndex((activeIndex - 1 + images.length) % images.length)}><FiChevronLeft /></button>}
+      <button type="button" className="image-viewer__close" aria-label="Close image viewer" title="Close" onClick={() => setActiveIndex(null)}><X /></button>
+      {images.length > 1 && <button type="button" className="image-viewer__previous" aria-label="Previous image" title="Previous image" onClick={() => setActiveIndex((activeIndex - 1 + images.length) % images.length)}><ChevronLeft /></button>}
       <img src={images[activeIndex].fileUrl} alt={`Shared image ${activeIndex + 1} of ${images.length}`} />
-      {images.length > 1 && <><span className="image-viewer__count">{activeIndex + 1} / {images.length}</span><button type="button" className="image-viewer__next" aria-label="Next image" title="Next image" onClick={() => setActiveIndex((activeIndex + 1) % images.length)}><FiChevronRight /></button></>}
+      {images.length > 1 && <><span className="image-viewer__count">{activeIndex + 1} / {images.length}</span><button type="button" className="image-viewer__next" aria-label="Next image" title="Next image" onClick={() => setActiveIndex((activeIndex + 1) % images.length)}><ChevronRight /></button></>}
     </div>}
   </>
 }
@@ -36,7 +36,7 @@ function ImageTile({ image, overlay, onClick }: { image: Attachment; overlay?: s
   const [state, setState] = useState<'loading' | 'loaded' | 'error'>('loading')
   return <button type="button" className={`image-tile is-${state}`} aria-label="Open shared image" onClick={onClick} disabled={state === 'error'}>
     {state === 'loading' && <span className="image-tile__loading" />}
-    {state === 'error' && <span className="image-tile__error"><FiImage /><small>Image unavailable</small></span>}
+    {state === 'error' && <span className="image-tile__error"><Image /><small>Image unavailable</small></span>}
     <img src={image.fileUrl} alt="Shared attachment" onLoad={() => setState('loaded')} onError={() => setState('error')} />
     {overlay && <span className="image-tile__overlay">{overlay}</span>}
   </button>

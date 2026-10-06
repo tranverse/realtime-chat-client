@@ -16,7 +16,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => 
 
 export default function App() {
   return (
-    <Suspense fallback={<main className="boot-screen"><BrandMark /><Spinner label="Loading Luma…" /></main>}><Routes>
+    <Suspense fallback={<main className="grid min-h-dvh place-items-center bg-slate-50"><div className="flex flex-col items-center gap-5"><BrandMark /><Spinner label="Loading chat…" /></div></main>}><Routes>
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/verify-registration" element={<PublicOnlyRoute><VerifyRegistrationPage /></PublicOnlyRoute>} />

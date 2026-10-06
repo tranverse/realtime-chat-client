@@ -1,46 +1,32 @@
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useConversationRealtime } from './useConversationRealtime'
 
-const stomp = vi.hoisted(() => ({
-  config: undefined as { onConnect?: () => void } | undefined,
-  subscribe: vi.fn(),
-  activate: vi.fn(),
-  deactivate: vi.fn(() => Promise.resolve()),
+const realtime = vi.hoisted(() => ({
+  status: 'connected' as 'connecting' | 'connected' | 'offline',
+  subscribe: vi.fn(() => vi.fn()),
+  publish: vi.fn(() => true),
 }))
 
-vi.mock('@stomp/stompjs', () => ({
-  Client: class {
-    connected = false
-    connectHeaders = {}
-    subscribe = stomp.subscribe
-    activate = stomp.activate
-    deactivate = stomp.deactivate
-    publish = vi.fn()
-
-    constructor(config: { onConnect?: () => void }) {
-      stomp.config = config
-      Object.assign(this, config)
-    }
-  },
-}))
-
-vi.mock('sockjs-client', () => ({ default: class SockJS {} }))
+vi.mock('@/features/realtime/RealtimeProvider', () => ({ useRealtime: () => realtime }))
 
 describe('useConversationRealtime', () => {
-  it('requests authoritative synchronization after initial connect and reconnect', () => {
-    const onConnected = vi.fn()
-    const { unmount } = renderHook(() =>
-      useConversationRealtime('conversation-1', vi.fn(), vi.fn(), onConnected),
-    )
+  beforeEach(() => { vi.clearAllMocks(); realtime.status = 'connected' })
 
-    expect(stomp.activate).toHaveBeenCalledOnce()
-    act(() => stomp.config?.onConnect?.())
-    act(() => stomp.config?.onConnect?.())
+  it('changes conversation subscriptions without creating a new transport', () => {
+    const { rerender } = renderHook(({ id }) => useConversationRealtime(id, vi.fn(), vi.fn(), vi.fn()), { initialProps: { id: 'conversation-1' } })
+    expect(realtime.subscribe).toHaveBeenCalledWith('/topic/conversations/conversation-1', expect.any(Function))
+    expect(realtime.subscribe).toHaveBeenCalledWith('/user/queue/errors', expect.any(Function))
+    rerender({ id: 'conversation-2' })
+    expect(realtime.subscribe).toHaveBeenCalledWith('/topic/conversations/conversation-2', expect.any(Function))
+  })
 
-    expect(onConnected).toHaveBeenCalledTimes(2)
-    expect(stomp.subscribe).toHaveBeenCalledTimes(4)
-    unmount()
-    expect(stomp.deactivate).toHaveBeenCalledOnce()
+  it('publishes chat events through the shared connection', () => {
+    const { result } = renderHook(() => useConversationRealtime('conversation-1', vi.fn(), vi.fn(), vi.fn()))
+    result.current.sendMessage({ content: 'Hello', type: 'TEXT', replyToMessageId: null, attachments: [] })
+    result.current.sendTyping(true); result.current.sendRead('message-1')
+    expect(realtime.publish).toHaveBeenCalledWith('/app/conversations/conversation-1/messages', expect.objectContaining({ content: 'Hello' }))
+    expect(realtime.publish).toHaveBeenCalledWith('/app/conversations/conversation-1/typing', { typing: true })
+    expect(realtime.publish).toHaveBeenCalledWith('/app/conversations/conversation-1/read', { messageId: 'message-1' })
   })
 })
