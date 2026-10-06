@@ -1,34 +1,27 @@
-import { Client, type IMessage } from '@stomp/stompjs'
-import { useEffect, useRef } from 'react'
-import SockJS from 'sockjs-client'
-import { appConfig } from '@/lib/config'
-import { tokenStore } from '@/lib/tokens'
-import type { ChatEvent } from '@/types/api'
+import { useEffect, useRef } from "react";
+import { useRealtime } from "@/features/realtime/RealtimeProvider";
+import type { ChatEvent } from "@/types/api";
 
-export function useInboxRealtime(conversationIds: string[], onEvent: (event: ChatEvent) => void) {
-  const onEventRef = useRef(onEvent)
-  const subscriptionKey = [...conversationIds].sort().join(',')
-
-  useEffect(() => { onEventRef.current = onEvent }, [onEvent])
-
+export function useInboxRealtime(
+  conversationIds: string[],
+  onEvent: (event: ChatEvent) => void,
+) {
+  const { subscribe } = useRealtime();
+  const onEventRef = useRef(onEvent);
+  const subscriptionKey = [...conversationIds].sort().join(",");
   useEffect(() => {
-    if (!subscriptionKey) return
-    const ids = subscriptionKey.split(',')
-    const socketUrl = /^https?:\/\//.test(appConfig.wsUrl)
-      ? appConfig.wsUrl
-      : `${window.location.origin}${appConfig.wsUrl.startsWith('/') ? '' : '/'}${appConfig.wsUrl}`
-    const client = new Client({
-      webSocketFactory: () => new SockJS(socketUrl),
-      reconnectDelay: 4_000,
-      heartbeatIncoming: 10_000,
-      heartbeatOutgoing: 10_000,
-      connectHeaders: { Authorization: `Bearer ${tokenStore.getAccessToken() ?? ''}` },
-      beforeConnect: async () => { client.connectHeaders = { Authorization: `Bearer ${tokenStore.getAccessToken() ?? ''}` } },
-      onConnect: () => ids.forEach((id) => client.subscribe(`/topic/conversations/${id}`, (frame: IMessage) => {
-        onEventRef.current(JSON.parse(frame.body) as ChatEvent)
-      })),
-    })
-    client.activate()
-    return () => { void client.deactivate() }
-  }, [subscriptionKey])
+    onEventRef.current = onEvent;
+  }, [onEvent]);
+  useEffect(() => {
+    const unsubscribes = subscriptionKey
+      ? subscriptionKey
+          .split(",")
+          .map((id) =>
+            subscribe(`/topic/conversations/${id}`, (frame) =>
+              onEventRef.current(JSON.parse(frame.body) as ChatEvent),
+            ),
+          )
+      : [];
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [subscribe, subscriptionKey]);
 }
