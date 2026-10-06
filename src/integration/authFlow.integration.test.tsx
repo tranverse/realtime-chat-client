@@ -100,7 +100,7 @@ describe('authentication flow integration', () => {
     renderAuthFlow('/chat/conversation-1')
 
     expect(screen.getByText('Restoring your session…')).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Sign in to Luma' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in to Realtime Chat' })).toBeInTheDocument()
     expect(tokenStore.getAccessToken()).toBeNull()
     expect(tokenStore.getRefreshToken()).toBeNull()
   })
@@ -114,6 +114,6 @@ describe('authentication flow integration', () => {
 
     window.dispatchEvent(new Event('luma:session-expired'))
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to Luma' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in to Realtime Chat' })).toBeInTheDocument()
   })
 })

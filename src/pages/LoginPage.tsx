@@ -41,7 +41,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout eyebrow="Welcome back" title="Sign in to Luma" description="Pick up the conversations waiting for you.">
+    <AuthLayout eyebrow="Welcome back" title="Sign in to Realtime Chat" description="Pick up the conversations waiting for you.">
       <form className="auth-form" onSubmit={submit} noValidate>
         <FormField label="Email" type="email" autoComplete="email" placeholder="ban@example.com" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} leading={<Mail size={17} />} />
         <div className="auth-form__password">
@@ -52,7 +52,7 @@ export function LoginPage() {
       </form>
       <div className="divider">or continue with</div>
       <a className="google-button" href={authApi.googleLoginUrl()}><span>G</span> Google</a>
-      <p className="auth-switch">New to Luma? <Link to="/register">Create an account</Link></p>
+      <p className="auth-switch">New here? <Link to="/register">Create an account</Link></p>
     </AuthLayout>
   )
 }

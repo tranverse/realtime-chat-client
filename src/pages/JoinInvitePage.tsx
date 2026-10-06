@@ -23,5 +23,5 @@ export function JoinInvitePage() {
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   })
-  return <main className="invite-page"><BrandMark /><section><div><Link2 size={26} /></div><span>Conversation invite</span><h1>Join the conversation on Luma</h1><p>You received an invitation link. Add a short note in case the group requires approval.</p><TextAreaField label="Message (optional)" maxLength={500} placeholder="Hi, I would love to join…" value={message} onChange={(event) => setMessage(event.target.value)} /><Button size="lg" loading={join.isPending} onClick={() => join.mutate()}>Join conversation</Button><button onClick={() => navigate('/')}>Maybe later</button></section></main>
+  return <main className="invite-page"><BrandMark /><section><div><Link2 size={26} /></div><span>Conversation invite</span><h1>Join the conversation</h1><p>You received an invitation link. Add a short note in case the group requires approval.</p><TextAreaField label="Message (optional)" maxLength={500} placeholder="Hi, I would love to join…" value={message} onChange={(event) => setMessage(event.target.value)} /><Button size="lg" loading={join.isPending} onClick={() => join.mutate()}>Join conversation</Button><button onClick={() => navigate('/')}>Maybe later</button></section></main>
 }

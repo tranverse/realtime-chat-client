@@ -50,7 +50,7 @@ export function RegisterPage() {
           <FormField label="Password" type="password" autoComplete="new-password" placeholder="At least 6 characters" {...bind('password')} error={errors.password} leading={<LockKeyhole size={17} />} />
           <FormField label="Confirm" type="password" autoComplete="new-password" placeholder="Repeat password" {...bind('confirmPassword')} error={errors.confirmPassword} leading={<LockKeyhole size={17} />} />
         </div>
-        <p className="terms-note">By creating an account, you agree to use Luma thoughtfully and respectfully.</p>
+        <p className="terms-note">By creating an account, you agree to use this service thoughtfully and respectfully.</p>
         <Button type="submit" size="lg" loading={loading}>Create account</Button>
       </form>
       <p className="auth-switch">Already have an account? <Link to="/login">Sign in</Link></p>

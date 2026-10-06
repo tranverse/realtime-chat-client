@@ -1,6 +1,6 @@
-# Luma Realtime Chat Client
+# Realtime Chat Client
 
-Luma is the React single-page frontend for a full-stack realtime chat MVP. It consumes the REST and STOMP contracts from [`realtime-chat-server`](https://github.com/tranverse/realtime-chat-server), a Spring Boot modular monolith.
+This React single-page application is the web client for a full-stack realtime chat system. It consumes the REST and STOMP contracts from [`realtime-chat-server`](https://github.com/tranverse/realtime-chat-server), a Spring Boot modular monolith.
 
 ## Highlights
 

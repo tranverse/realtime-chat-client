@@ -2,7 +2,7 @@
 
 ## Scope
 
-Luma Client is a static React + TypeScript SPA. It is not a Next.js application and it does not contain a second business backend. The Spring Boot application remains the single modular monolith; this repository is only its web client.
+The client is a static React + TypeScript SPA. It is not a Next.js application and it does not contain a second business backend. The Spring Boot application remains the single modular monolith; this repository is only its web client.
 
 ```mermaid
 flowchart LR
