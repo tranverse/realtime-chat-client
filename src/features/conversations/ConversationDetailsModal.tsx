@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Avatar } from "../../components/ui/Avatar";
+import { AvatarUpload } from "../../components/ui/AvatarUpload";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Modal } from "../../components/ui/Modal";
@@ -134,17 +135,13 @@ export function ConversationDetailsModal({
                   <p>Keep the name and image recognizable.</p>
                 </div>
               </div>
-              <div className="form-grid">
+              <div className="space-y-4">
+                <AvatarUpload name={name || getConversationName(conversation, user?.id)} value={avatar} onChange={setAvatar} disabled={action.isPending} />
                 <FormField
                   label="Group name"
                   maxLength={50}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                />
-                <FormField
-                  label="Avatar URL"
-                  value={avatar}
-                  onChange={(event) => setAvatar(event.target.value)}
                 />
               </div>
               <Button
