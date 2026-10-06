@@ -38,7 +38,7 @@ export function AuthLayout({
               <Check size={15} /> Got it, looks great ✨
             </div>
             <div className="preview-presence">
-              <span /> 8 people online
+              <span /> Your conversations in one place
             </div>
           </div>
         </div>

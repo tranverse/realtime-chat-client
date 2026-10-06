@@ -25,9 +25,8 @@ import { conversationApi } from "../conversations/conversationApi";
 import {
   getConversationAvatar,
   getConversationName,
-  getConversationParticipantsLabel,
 } from "../conversations/conversationUtils";
-import { useChatPreferences } from "../settings/preferences";
+import { ConversationPresence } from "../presence/ConversationPresence";
 import { messageApi } from "./messageApi";
 import { applyMessageEvent, type MessagePages } from "./messageCache";
 import { MessageBubble } from "./MessageBubble";
@@ -57,11 +56,11 @@ export function ChatConversation({
   const [connectionNotice, setConnectionNotice] = useState<
     "hidden" | "reconnecting" | "offline"
   >("hidden");
-  const { preferences } = useChatPreferences();
   const [pageIsActive, setPageIsActive] = useState(
     () => document.visibilityState === "visible" && document.hasFocus(),
   );
   const lastReadRef = useRef<string | null>(null);
+  const connectionLostSince = useRef<number | null>(null);
   const typingTimers = useRef(new Map<string, number>());
 
   const conversation = useQuery({
@@ -144,16 +143,19 @@ export function ChatConversation({
   );
   useEffect(() => {
     if (realtime.status === "connected") {
+      connectionLostSince.current = null;
       setConnectionNotice("hidden");
       return;
     }
+    connectionLostSince.current ??= Date.now();
+    const elapsed = Date.now() - connectionLostSince.current;
     const reconnectingTimer = window.setTimeout(
       () => setConnectionNotice("reconnecting"),
-      800,
+      Math.max(0, 800 - elapsed),
     );
     const offlineTimer = window.setTimeout(
       () => setConnectionNotice("offline"),
-      8_000,
+      Math.max(0, 8_000 - elapsed),
     );
     return () => {
       window.clearTimeout(reconnectingTimer);
@@ -301,8 +303,8 @@ export function ChatConversation({
             {typingNames.length
               ? `${typingNames.join(", ")} typing…`
               : connectionNotice !== "hidden"
-                ? connectionNotice === "reconnecting" ? "Reconnecting…" : "Offline · messages will use REST"
-                : getConversationParticipantsLabel(conversation.data, user?.id)}
+                ? connectionNotice === "reconnecting" ? "Reconnecting…" : "Connection lost"
+                : <ConversationPresence conversation={conversation.data} currentUserId={user?.id} />}
           </p>
         </div>
         <Button
@@ -341,7 +343,7 @@ export function ChatConversation({
             description="This conversation is ready for its first message."
           />
         )}
-        <div className={`mx-auto flex w-full max-w-5xl flex-col ${preferences.density === "compact" ? "gap-0" : "gap-1"}`}>
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-1">
           {messages.map((message, index) => (
             <MessageBubble
               key={message.id}

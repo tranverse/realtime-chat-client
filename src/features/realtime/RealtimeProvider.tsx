@@ -13,6 +13,8 @@ import {
 import { appConfig } from "@/lib/config";
 import { tokenStore } from "@/lib/tokens";
 import { useAuth } from "@/features/auth/useAuth";
+import { apiClient } from "@/lib/apiClient";
+import type { ApiResponse } from "@/types/api";
 
 export type ConnectionStatus = "connecting" | "connected" | "offline";
 interface RealtimeContextValue {
@@ -26,7 +28,7 @@ interface RealtimeContextValue {
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, user } = useAuth();
   const clientRef = useRef<Client | null>(null);
   const callbacks = useRef(new Map<string, Set<(frame: IMessage) => void>>());
   const subscriptions = useRef(new Map<string, StompSubscription>());
@@ -45,6 +47,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const activeSubscriptions = subscriptions.current;
     if (authStatus !== "authenticated") {
       const current = clientRef.current;
       clientRef.current = null;
@@ -55,35 +58,62 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const socketUrl = /^https?:\/\//.test(appConfig.wsUrl)
       ? appConfig.wsUrl
       : `${window.location.origin}${appConfig.wsUrl.startsWith("/") ? "" : "/"}${appConfig.wsUrl}`;
+    let heartbeatTimer: number | undefined;
+    let configRequest: AbortController | undefined;
+    function stopHeartbeat() {
+      window.clearInterval(heartbeatTimer);
+      configRequest?.abort();
+    }
+    function beat() {
+      if (clientRef.current === client && client.connected) {
+        client.publish({ destination: '/app/presence/heartbeat', body: '{}' });
+      }
+    }
+    async function startHeartbeat() {
+      stopHeartbeat();
+      configRequest = new AbortController();
+      const signal = configRequest.signal;
+      let interval = 25_000;
+      try {
+        const { data } = await apiClient.get<ApiResponse<{ heartbeatMillis: number }>>('/presence/config', { signal });
+        if (data.data.heartbeatMillis >= 1_000) interval = data.data.heartbeatMillis;
+      } catch { /* Default matches the server default if configuration retrieval fails. */ }
+      if (signal.aborted || clientRef.current !== client || !client.connected) return;
+      beat(); heartbeatTimer = window.setInterval(beat, interval);
+    }
     const client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
       reconnectDelay: 4_000,
       heartbeatIncoming: 10_000,
       heartbeatOutgoing: 10_000,
       beforeConnect: async () => {
+        if (clientRef.current !== client) return;
         client.connectHeaders = {
           Authorization: `Bearer ${tokenStore.getAccessToken() ?? ""}`,
         };
         setStatus("connecting");
       },
       onConnect: () => {
+        if (clientRef.current !== client) return;
         subscriptions.current.clear();
         callbacks.current.forEach((_, destination) =>
           attach(client, destination),
         );
         setStatus("connected");
+        void startHeartbeat();
       },
-      onWebSocketClose: () => setStatus("offline"),
-      onStompError: () => setStatus("offline"),
+      onWebSocketClose: () => { stopHeartbeat(); if (clientRef.current === client) setStatus("offline"); },
+      onStompError: () => { stopHeartbeat(); if (clientRef.current === client) setStatus("offline"); },
     });
     clientRef.current = client;
     client.activate();
     return () => {
+      stopHeartbeat();
       clientRef.current = null;
-      subscriptions.current.clear();
+      activeSubscriptions.clear();
       void client.deactivate();
     };
-  }, [attach, authStatus]);
+  }, [attach, authStatus, user?.id]);
 
   const subscribe = useCallback(
     (destination: string, callback: (frame: IMessage) => void) => {
