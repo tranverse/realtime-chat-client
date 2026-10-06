@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
-import { FiImage, FiPaperclip, FiRefreshCw, FiSend, FiSmile, FiX } from 'react-icons/fi'
+import { Image, Paperclip, RefreshCw, Send, Smile, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { getErrorMessage } from '@/lib/errors'
@@ -84,17 +84,17 @@ export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, d
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit() }
   }
 
-  return <div className="composer-wrap">
-    {replyingTo && <div className="composer-reply"><span className="composer-reply__icon"><FiRefreshCw /></span><span><strong>Replying to {replyingTo.sender.name}</strong><small>{replyingTo.content || 'Image message'}</small></span><Button size="icon" variant="ghost" onClick={onCancelReply}>Cancel reply<FiX /></Button></div>}
-    {failedImages.length > 0 && <div className="upload-failed"><FiImage /><span><strong>Images were not sent</strong><small>Your selection is ready to retry.</small></span><Button size="sm" variant="secondary" disabled={uploading} onClick={() => void sendImages(failedImages)} leftIcon={<FiRefreshCw />}>Retry</Button><Button size="icon" variant="ghost" onClick={() => setFailedImages([])}>Dismiss<FiX /></Button></div>}
-    <form className="message-composer" onSubmit={submit}>
-      <input ref={imageInput} className="visually-hidden" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseImages} />
-      <Button type="button" size="icon" variant="ghost" disabled={disabled || uploading} onClick={() => imageInput.current?.click()}>Send images<FiImage /></Button>
-      <Button type="button" size="icon" variant="ghost" disabled title="File attachments are coming soon">Attach a file<FiPaperclip /></Button>
-      <textarea rows={1} maxLength={5000} aria-label="Message" placeholder={uploading ? 'Uploading images…' : 'Type a message'} value={content} disabled={disabled || uploading} onChange={(event) => changed(event.target.value)} onKeyDown={keyDown} />
-      <Button type="button" size="icon" variant="ghost" disabled={uploading} onClick={() => setContent((value) => `${value} ✨`)}>Add emoji<FiSmile /></Button>
-      <Button type="submit" size="icon" loading={uploading} disabled={disabled || uploading || !content.trim()}>Send<FiSend /></Button>
+  return <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-3 sm:px-5 sm:pb-4">
+    {replyingTo && <div className="mx-auto flex max-w-5xl items-center gap-3 border-b border-slate-100 px-2 py-2 text-sm"><RefreshCw className="text-indigo-500" size={16} /><span className="min-w-0 flex-1"><strong className="block text-xs text-slate-700">Replying to {replyingTo.sender.name}</strong><small className="block truncate text-slate-400">{replyingTo.content || 'Image message'}</small></span><Button size="icon" variant="ghost" onClick={onCancelReply}>Cancel reply<X size={16} /></Button></div>}
+    {failedImages.length > 0 && <div className="mx-auto mt-2 flex max-w-5xl items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-3 text-red-700"><Image size={18} /><span className="min-w-0 flex-1 text-xs"><strong className="block">Images were not sent</strong><small>Your selection is ready to retry.</small></span><Button size="sm" variant="secondary" disabled={uploading} onClick={() => void sendImages(failedImages)} leftIcon={<RefreshCw size={14} />}>Retry</Button><Button size="icon" variant="ghost" onClick={() => setFailedImages([])}>Dismiss<X size={16} /></Button></div>}
+    <form className="mx-auto mt-2 flex max-w-5xl items-end gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100" onSubmit={submit}>
+      <input ref={imageInput} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseImages} />
+      <Button type="button" size="icon" variant="ghost" disabled={disabled || uploading} onClick={() => imageInput.current?.click()}>Send images<Image size={18} /></Button>
+      <Button className="hidden sm:inline-flex" type="button" size="icon" variant="ghost" disabled title="File attachments are coming soon">Attach a file<Paperclip size={18} /></Button>
+      <textarea className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400" rows={1} maxLength={5000} aria-label="Message" placeholder={uploading ? 'Uploading images…' : 'Type a message'} value={content} disabled={disabled || uploading} onChange={(event) => changed(event.target.value)} onKeyDown={keyDown} />
+      <Button className="hidden sm:inline-flex" type="button" size="icon" variant="ghost" disabled={uploading} onClick={() => setContent((value) => `${value} ✨`)}>Add emoji<Smile size={18} /></Button>
+      <Button className="rounded-xl" type="submit" size="icon" loading={uploading} disabled={disabled || uploading || !content.trim()}>Send<Send size={18} /></Button>
     </form>
-    {uploading && <p className="composer-hint is-uploading"><span />Uploading and sending {failedImages.length || ''} images securely…</p>}
+    {uploading && <p className="mx-auto mt-1 max-w-5xl px-2 text-xs text-slate-400">Uploading and sending images securely…</p>}
   </div>
 }
