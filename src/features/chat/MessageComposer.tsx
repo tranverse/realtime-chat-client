@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/errors'
 import type { ChatMessage, CreateMessagePayload } from '@/types/api'
 import { limitChatImages, validateChatImage } from './imageUpload'
 import { mediaApi } from './mediaApi'
+import { useChatPreferences } from '../settings/preferences'
 
 interface MessageComposerProps {
   replyingTo: ChatMessage | null
@@ -16,6 +17,7 @@ interface MessageComposerProps {
 }
 
 export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, disabled }: MessageComposerProps) {
+  const { preferences } = useChatPreferences()
   const [content, setContent] = useState('')
   const [uploading, setUploading] = useState(false)
   const [failedImages, setFailedImages] = useState<File[]>([])
@@ -81,7 +83,7 @@ export function MessageComposer({ replyingTo, onCancelReply, onSend, onTyping, d
   }
 
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit() }
+    if (preferences.enterToSend && event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit() }
   }
 
   return <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-3 sm:px-5 sm:pb-4">

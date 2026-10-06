@@ -387,7 +387,6 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 .image-upload-preview small { margin-top: 2px; color: var(--ink-500); font-size: 8px; }
 
 @media (max-width: 760px) {
-  .chat-conversation { height: calc(100dvh - 64px); }
   .message-history { padding-inline: 14px; }
   .message-row { max-width: 85%; }
   .message-tools { opacity: 1; }
