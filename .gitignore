@@ -25,3 +25,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local architecture notes and internal working documents
+docs/
+*_REPORT.md
+*_SUMMARY.md
+*_AUDIT.md
+CV_*.md
+*_READINESS_*.md
