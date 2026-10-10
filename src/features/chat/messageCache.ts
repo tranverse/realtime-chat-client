@@ -23,12 +23,6 @@ export function applyMessageEvent(
     )
       pages[0].items.unshift(event.message);
   }
-  if (event.type === "MESSAGE_UPDATED" && event.message) {
-    for (const page of pages)
-      page.items = page.items.map((message) =>
-        message.id === event.message!.id ? event.message! : message,
-      );
-  }
   if (event.type === "MESSAGE_DELETED") {
     for (const page of pages)
       page.items = page.items.map((message) =>

@@ -42,13 +42,6 @@ export const messageApi = {
     );
     return data.data;
   },
-  async edit(messageId: string, content: string) {
-    const { data } = await apiClient.patch<ApiResponse<ChatMessage>>(
-      `/messages/${messageId}`,
-      { content },
-    );
-    return data.data;
-  },
   async remove(messageId: string) {
     await apiClient.delete(`/messages/${messageId}`);
   },

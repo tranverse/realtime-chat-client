@@ -2,7 +2,6 @@ import {
   Download,
   FileText,
   MoreHorizontal,
-  Pencil,
   Reply,
   Trash2,
 } from "lucide-react";
@@ -17,7 +16,6 @@ interface Props {
   canDelete: boolean;
   receipt: string | null;
   onReply: () => void;
-  onEdit: (content: string) => void;
   onNavigateReply: (id: string) => void;
   highlighted?: boolean;
   onDelete: () => void;
@@ -30,15 +28,12 @@ export function MessageBubble({
   canDelete,
   receipt,
   onReply,
-  onEdit,
   onNavigateReply,
   highlighted = false,
   onDelete,
   showAuthor = true,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(message.content ?? "");
   const deleted = message.content === null && message.attachments.length === 0;
 
   return (
@@ -89,81 +84,51 @@ export function MessageBubble({
             </span>
           </button>
         )}
-        {editing ? (
-          <form
-            className="message-edit"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (draft.trim()) {
-                onEdit(draft.trim());
-                setEditing(false);
-              }
-            }}
-          >
-            <input
-              autoFocus
-              maxLength={5000}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(message.content ?? "");
-                setEditing(false);
-              }}
-            >
-              Cancel
-            </button>
-            <button type="submit">Save</button>
-          </form>
-        ) : (
-          <>
-            {deleted ? (
-              <p>Message deleted</p>
-            ) : (
-              message.content && (
-                <p className="whitespace-pre-wrap break-words">
-                  {message.content}
-                </p>
-              )
-            )}
-            <ImageMessage attachments={message.attachments} />
-            {message.attachments.some(
-              (attachment) => !attachment.fileType.startsWith("image/"),
-            ) && (
-              <div className="message-attachments">
-                {message.attachments
-                  .filter(
-                    (attachment) => !attachment.fileType.startsWith("image/"),
-                  )
-                  .map((attachment) => (
-                    <a
-                      key={attachment.id ?? attachment.fileUrl}
-                      href={attachment.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="file-attachment"
-                    >
-                      <FileText size={20} />
-                      <span>
-                        <strong>
-                          {attachment.fileUrl.split("/").at(-1) || "Attachment"}
-                        </strong>
-                        <small>
-                          {attachment.fileType}
-                          {attachment.fileSize
-                            ? ` · ${formatSize(attachment.fileSize)}`
-                            : ""}
-                        </small>
-                      </span>
-                      <Download size={16} />
-                    </a>
-                  ))}
-              </div>
-            )}
-          </>
-        )}
+        <>
+          {deleted ? (
+            <p>Message deleted</p>
+          ) : (
+            message.content && (
+              <p className="whitespace-pre-wrap break-words">
+                {message.content}
+              </p>
+            )
+          )}
+          <ImageMessage attachments={message.attachments} />
+          {message.attachments.some(
+            (attachment) => !attachment.fileType.startsWith("image/"),
+          ) && (
+            <div className="message-attachments">
+              {message.attachments
+                .filter(
+                  (attachment) => !attachment.fileType.startsWith("image/"),
+                )
+                .map((attachment) => (
+                  <a
+                    key={attachment.id ?? attachment.fileUrl}
+                    href={attachment.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="file-attachment"
+                  >
+                    <FileText size={20} />
+                    <span>
+                      <strong>
+                        {attachment.fileUrl.split("/").at(-1) || "Attachment"}
+                      </strong>
+                      <small>
+                        {attachment.fileType}
+                        {attachment.fileSize
+                          ? ` · ${formatSize(attachment.fileSize)}`
+                          : ""}
+                      </small>
+                    </span>
+                    <Download size={16} />
+                  </a>
+                ))}
+            </div>
+          )}
+        </>
         <time
           className={
             mine
@@ -175,7 +140,6 @@ export function MessageBubble({
             hour: "2-digit",
             minute: "2-digit",
           }).format(new Date(message.createdAt))}
-          {message.editedAt && " · edited"}
         </time>
       </div>
       {receipt && (
@@ -214,17 +178,6 @@ export function MessageBubble({
               >
                 <Reply size={13} /> Reply
               </button>
-              {mine && (
-                <button
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 hover:bg-slate-50"
-                  onClick={() => {
-                    setEditing(true);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Pencil size={13} /> Edit
-                </button>
-              )}
               {canDelete && (
                 <button
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"

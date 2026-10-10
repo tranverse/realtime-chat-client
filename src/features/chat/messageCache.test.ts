@@ -32,20 +32,8 @@ const page = {
 const data: MessagePages = { pages: [page], pageParams: [undefined] };
 
 describe("applyMessageEvent", () => {
-  it("updates and soft-deletes a message without mutating the old cache", () => {
-    const updated = { ...message, content: "Updated" };
-    const afterEdit = applyMessageEvent(data, {
-      type: "MESSAGE_UPDATED",
-      conversationId: "c1",
-      actorUserId: "u1",
-      messageId: "m1",
-      sequence: 1,
-      message: updated,
-    } satisfies ChatEvent)!;
-    expect(afterEdit.pages[0].items[0].content).toBe("Updated");
-    expect(data.pages[0].items[0].content).toBe("Hello");
-
-    const afterDelete = applyMessageEvent(afterEdit, {
+  it("soft-deletes a message without mutating the old cache", () => {
+    const afterDelete = applyMessageEvent(data, {
       type: "MESSAGE_DELETED",
       conversationId: "c1",
       actorUserId: "u1",
@@ -53,5 +41,6 @@ describe("applyMessageEvent", () => {
       sequence: 1,
     } satisfies ChatEvent)!;
     expect(afterDelete.pages[0].items[0].content).toBeNull();
+    expect(data.pages[0].items[0].content).toBe("Hello");
   });
 });

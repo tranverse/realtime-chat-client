@@ -270,11 +270,6 @@ export function ChatConversation({
     [],
   );
 
-  const edit = useMutation({
-    mutationFn: ({ id, content }: { id: string; content: string }) =>
-      messageApi.edit(id, content),
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
   const remove = useMutation({
     mutationFn: (id: string) => messageApi.remove(id),
     onSuccess: () => setDeleteTarget(null),
@@ -460,7 +455,6 @@ export function ChatConversation({
                   : null
               }
               onReply={() => setReplyingTo(message)}
-              onEdit={(content) => edit.mutate({ id: message.id, content })}
               onNavigateReply={replyNavigation.navigateTo}
               highlighted={replyNavigation.highlightId === message.id}
               onDelete={() => setDeleteTarget(message)}

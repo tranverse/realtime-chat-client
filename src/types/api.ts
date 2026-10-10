@@ -140,7 +140,7 @@ export interface CreateMessagePayload {
 }
 
 export interface ChatEvent {
-  type: 'MESSAGE_CREATED' | 'MESSAGE_UPDATED' | 'MESSAGE_DELETED' | 'MESSAGES_READ'
+  type: 'MESSAGE_CREATED' | 'MESSAGE_DELETED' | 'MESSAGES_READ'
   conversationId: string
   actorUserId: string
   messageId: string
