@@ -4,10 +4,22 @@ import type {
   ChatMessage,
   CreateMessagePayload,
   MessageResponse,
+  MessageContext,
   PageResponse,
 } from "../../types/api";
 
 export const messageApi = {
+  async context(
+    conversationId: string,
+    messageId: string,
+    signal?: AbortSignal,
+  ) {
+    const { data } = await apiClient.get<ApiResponse<MessageContext>>(
+      `/conversations/${conversationId}/messages/${messageId}/context`,
+      { signal },
+    );
+    return data.data;
+  },
   async history(conversationId: string, beforeSequence?: number, size = 50) {
     const { data } = await apiClient.get<
       ApiResponse<PageResponse<ChatMessage>>

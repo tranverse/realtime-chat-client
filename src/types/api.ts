@@ -77,6 +77,12 @@ export interface ChatMessage {
   updatedAt: string
 }
 
+export interface MessageContext {
+  items: ChatMessage[]
+  hasOlder: boolean
+  hasNewer: boolean
+}
+
 export interface ConversationMember {
   id: string
   user: UserSummary

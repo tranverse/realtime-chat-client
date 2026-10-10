@@ -18,6 +18,8 @@ interface Props {
   receipt: string | null;
   onReply: () => void;
   onEdit: (content: string) => void;
+  onNavigateReply: (id: string) => void;
+  highlighted?: boolean;
   onDelete: () => void;
   showAuthor?: boolean;
 }
@@ -29,6 +31,8 @@ export function MessageBubble({
   receipt,
   onReply,
   onEdit,
+  onNavigateReply,
+  highlighted = false,
   onDelete,
   showAuthor = true,
 }: Props) {
@@ -45,6 +49,18 @@ export function MessageBubble({
           : "group relative mr-auto flex w-fit max-w-[85%] flex-col items-start py-0.5 sm:max-w-[68%]"
       }
       data-sequence={message.sequence}
+      data-message-id={message.id}
+      data-highlighted={highlighted || undefined}
+      tabIndex={-1}
+      style={
+        highlighted
+          ? {
+              outline: "3px solid #f59e0b",
+              outlineOffset: "4px",
+              borderRadius: "12px",
+            }
+          : undefined
+      }
     >
       {!mine && showAuthor && (
         <span className="mb-1 px-2 text-[11px] font-medium text-slate-500">
@@ -55,11 +71,14 @@ export function MessageBubble({
         className={`${mine ? "rounded-2xl rounded-br-md bg-indigo-600 text-white" : "rounded-2xl rounded-bl-md border border-slate-200 bg-white text-slate-800"} ${deleted ? "italic opacity-70" : ""} min-w-[72px] max-w-full px-3.5 py-2 shadow-sm`}
       >
         {message.replyTo && (
-          <div
+          <button
+            type="button"
+            aria-label={`Go to original message from ${message.replyTo.sender.name}`}
+            onClick={() => onNavigateReply(message.replyTo!.id)}
             className={
               mine
-                ? "mb-2 border-l-2 border-white/50 pl-2 text-xs text-indigo-100"
-                : "mb-2 border-l-2 border-indigo-300 pl-2 text-xs text-slate-500"
+                ? "mb-2 block w-full rounded border-l-2 border-white/50 p-2 text-left text-xs text-indigo-100 hover:bg-white/10 focus-visible:outline focus-visible:outline-2"
+                : "mb-2 block w-full rounded border-l-2 border-indigo-300 p-2 text-left text-xs text-slate-500 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2"
             }
           >
             <strong className="block truncate">
@@ -68,7 +87,7 @@ export function MessageBubble({
             <span className="block truncate">
               {message.replyTo.content ?? "Deleted message"}
             </span>
-          </div>
+          </button>
         )}
         {editing ? (
           <form
@@ -103,7 +122,11 @@ export function MessageBubble({
             {deleted ? (
               <p>Message deleted</p>
             ) : (
-              message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>
+              message.content && (
+                <p className="whitespace-pre-wrap break-words">
+                  {message.content}
+                </p>
+              )
             )}
             <ImageMessage attachments={message.attachments} />
             {message.attachments.some(

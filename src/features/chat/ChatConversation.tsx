@@ -38,6 +38,7 @@ import {
 } from "./readReceipts";
 import { useConversationRealtime } from "./useConversationRealtime";
 import { useMessageScroll } from "./useMessageScroll";
+import { useReplyNavigation } from "./useReplyNavigation";
 import { DeleteMessageDialog } from "./DeleteMessageDialog";
 
 export function ChatConversation({
@@ -62,6 +63,7 @@ export function ChatConversation({
   const lastReadRef = useRef<string | null>(null);
   const connectionLostSince = useRef<number | null>(null);
   const typingTimers = useRef(new Map<string, number>());
+  const messageHistoryRef = useRef<HTMLDivElement | null>(null);
 
   const conversation = useQuery({
     queryKey: ["conversation", conversationId],
@@ -121,6 +123,10 @@ export function ChatConversation({
         ["messages", conversationId],
         (current) => applyMessageEvent(current, event),
       );
+      if (event.type === "MESSAGE_DELETED")
+        void queryClient.invalidateQueries({
+          queryKey: ["reply-history", conversationId],
+        });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({
         queryKey: ["conversation", conversationId],
@@ -131,6 +137,9 @@ export function ChatConversation({
 
   const onRealtimeConnected = useCallback(() => {
     lastReadRef.current = null;
+    void queryClient.invalidateQueries({
+      queryKey: ["reply-history", conversationId],
+    });
     void queryClient.invalidateQueries({
       queryKey: ["messages", conversationId],
     });
@@ -170,14 +179,20 @@ export function ChatConversation({
       window.clearTimeout(offlineTimer);
     };
   }, [realtime.status]);
-  const messages = useMemo(
+  const latestMessages = useMemo(
     () =>
       (history.data?.pages.flatMap((page) => page.items) ?? []).sort(
         (a, b) => a.sequence - b.sequence,
       ),
     [history.data],
   );
-  const newest = messages.at(-1);
+  const replyNavigation = useReplyNavigation(
+    conversationId,
+    latestMessages,
+    messageHistoryRef,
+  );
+  const messages = replyNavigation.messages;
+  const newest = latestMessages.at(-1);
   const latestOwnMessageId = messages.findLast(
     (message) => message.sender.id === user?.id,
   )?.id;
@@ -189,11 +204,17 @@ export function ChatConversation({
     handleScroll,
     scrollToBottom,
     loadOlderPreservingPosition,
-  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id);
+  } = useMessageScroll(
+    newest?.id,
+    newest?.sender.id === user?.id,
+    replyNavigation.pauseAutoScroll,
+    messageHistoryRef,
+  );
 
   useEffect(() => {
     if (
       !newest ||
+      replyNavigation.pauseAutoScroll ||
       lastReadRef.current === newest.id ||
       !canMarkConversationRead(
         isNearBottom,
@@ -224,6 +245,7 @@ export function ChatConversation({
     realtime,
     user?.id,
     queryClient,
+    replyNavigation.pauseAutoScroll,
   ]);
 
   useEffect(() => {
@@ -260,9 +282,13 @@ export function ChatConversation({
   });
 
   async function send(payload: CreateMessagePayload) {
-    if (realtime.sendMessage(payload)) return;
+    if (realtime.sendMessage(payload)) {
+      replyNavigation.returnToLatest();
+      return;
+    }
     try {
       const created = await messageApi.send(conversationId, payload);
+      replyNavigation.returnToLatest();
       onRealtimeEvent({
         type: "MESSAGE_CREATED",
         conversationId,
@@ -360,15 +386,44 @@ export function ChatConversation({
         ref={historyRef}
         onScroll={handleScroll}
       >
-        {history.hasNextPage && (
+        {replyNavigation.browsingHistory && (
+          <div className="sticky top-0 z-20 mb-4 flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-white p-3 text-xs shadow-sm">
+            <span>Viewing earlier messages</span>
+            <Button
+              size="sm"
+              onClick={() => {
+                replyNavigation.returnToLatest();
+                requestAnimationFrame(() => scrollToBottom());
+              }}
+            >
+              Return to latest
+            </Button>
+          </div>
+        )}
+        {replyNavigation.navigating && (
+          <p role="status" className="mb-3 text-center text-xs text-slate-500">
+            Finding original message…
+          </p>
+        )}
+        {(replyNavigation.browsingHistory
+          ? replyNavigation.context.hasPreviousPage
+          : history.hasNextPage) && (
           <div className="mb-5 flex justify-center">
             <Button
               size="sm"
               variant="secondary"
-              loading={history.isFetchingNextPage}
+              loading={
+                replyNavigation.browsingHistory
+                  ? replyNavigation.context.isFetching
+                  : history.isFetchingNextPage
+              }
               leftIcon={<ArrowDown size={14} />}
               onClick={() =>
-                void loadOlderPreservingPosition(history.fetchNextPage)
+                void loadOlderPreservingPosition(
+                  replyNavigation.browsingHistory
+                    ? replyNavigation.context.fetchPreviousPage
+                    : history.fetchNextPage,
+                )
               }
             >
               Load older messages
@@ -406,12 +461,29 @@ export function ChatConversation({
               }
               onReply={() => setReplyingTo(message)}
               onEdit={(content) => edit.mutate({ id: message.id, content })}
+              onNavigateReply={replyNavigation.navigateTo}
+              highlighted={replyNavigation.highlightId === message.id}
               onDelete={() => setDeleteTarget(message)}
             />
           ))}
+          {replyNavigation.browsingHistory &&
+            replyNavigation.context.hasNextPage && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={replyNavigation.context.isFetching}
+                onClick={() =>
+                  void replyNavigation.context
+                    .fetchNextPage()
+                    .catch(() => toast.error("Could not load newer messages."))
+                }
+              >
+                Load newer messages
+              </Button>
+            )}
           <div ref={bottomRef} />
         </div>
-        {unseenMessages > 0 && (
+        {!replyNavigation.browsingHistory && unseenMessages > 0 && (
           <Button
             className="sticky bottom-2 left-1/2 z-10 -translate-x-1/2 shadow-lg"
             size="sm"
