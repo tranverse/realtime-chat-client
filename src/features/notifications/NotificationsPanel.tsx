@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bell, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/ui/Avatar";
+import { UnreadBadge } from "@/components/ui/UnreadBadge";
 import type { Conversation } from "@/types/api";
 import { useAuth } from "../auth/useAuth";
 import { conversationApi } from "../conversations/conversationApi";
@@ -76,7 +77,7 @@ export function NotificationsPanel({ onSelect }: { onSelect: () => void }) {
                 key={item.id}
                 type="button"
                 onClick={() => select(item)}
-                className="flex w-full gap-3 border-b border-slate-100 p-4 text-left last:border-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+                className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
               >
                 <Avatar
                   name={name}
@@ -98,9 +99,7 @@ export function NotificationsPanel({ onSelect }: { onSelect: () => void }) {
                     )}
                   </time>
                 </span>
-                <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                  {item.unreadCount}
-                </span>
+                <UnreadBadge count={item.unreadCount} />
               </button>
             );
           })}
