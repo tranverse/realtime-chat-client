@@ -377,7 +377,7 @@ export function ChatConversation({
         </Button>
       </header>
       <div
-        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-5 sm:px-6"
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 pt-5 pb-3 sm:px-6"
         ref={historyRef}
         onScroll={handleScroll}
       >
@@ -396,7 +396,7 @@ export function ChatConversation({
           </div>
         )}
         {replyNavigation.navigating && (
-          <p role="status" className="mb-3 text-center text-xs text-slate-500">
+          <p role="status" className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-center text-xs text-slate-500 shadow-sm">
             Finding original message…
           </p>
         )}
@@ -475,8 +475,8 @@ export function ChatConversation({
                 Load newer messages
               </Button>
             )}
-          <div ref={bottomRef} />
         </div>
+        <div ref={bottomRef} />
         {!replyNavigation.browsingHistory && unseenMessages > 0 && (
           <Button
             className="sticky bottom-2 left-1/2 z-10 -translate-x-1/2 shadow-lg"
@@ -486,14 +486,6 @@ export function ChatConversation({
           >
             {unseenMessages} new {unseenMessages === 1 ? "message" : "messages"}
           </Button>
-        )}
-      </div>
-      <div className="h-6 shrink-0 bg-white px-5 text-xs text-slate-400">
-        {typingNames.length > 0 && (
-          <span>
-            {typingNames.join(", ")} {typingNames.length === 1 ? "is" : "are"}{" "}
-            typing…
-          </span>
         )}
       </div>
       <MessageComposer

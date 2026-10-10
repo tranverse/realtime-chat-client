@@ -37,6 +37,16 @@ describe("message composer keyboard preferences", () => {
     fireEvent.keyDown(mount(), { key: "Enter" });
     await waitFor(() => expect(send).toHaveBeenCalledOnce());
   });
+  it("does not reserve a top margin when no reply or upload status is present", () => {
+    const input = mount();
+    expect(input.closest("form")).not.toHaveClass("mt-2");
+    expect(input.closest("form")?.parentElement).toHaveClass("shrink-0");
+    expect(input.closest("form")?.parentElement).toHaveClass("border-t");
+    expect(input.closest("form")).toHaveClass("w-full");
+    expect(input.closest("form")).not.toHaveClass("max-w-5xl");
+    expect(input.closest("form")).not.toHaveClass("border", "shadow-sm", "rounded-2xl");
+    expect(input.closest("form")?.parentElement).not.toHaveClass("px-3", "py-3", "pb-3");
+  });
   it("Enter does not send when disabled and the button still sends", async () => {
     setChatPreferences((current) => ({ ...current, enterToSend: false }));
     fireEvent.keyDown(mount(), { key: "Enter" });
