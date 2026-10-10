@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/ui/Avatar";
-import type { Conversation, PageResponse } from "@/types/api";
+import type { Conversation } from "@/types/api";
 import { useAuth } from "../auth/useAuth";
 import { conversationApi } from "../conversations/conversationApi";
 import {
@@ -11,38 +11,20 @@ import {
   getConversationName,
   lastMessageLabel,
 } from "../conversations/conversationUtils";
-import { useInboxRealtime } from "./useInboxRealtime";
 
 export function NotificationsPanel({ onSelect }: { onSelect: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const conversations = useQuery({
     queryKey: ["conversations"],
-    queryFn: () => conversationApi.list(),
+    queryFn: ({ signal }) => conversationApi.list(0, 30, signal),
     refetchInterval: 15_000,
   });
   const unread = (conversations.data?.items ?? []).filter(
     (item) => item.unreadCount > 0,
   );
   const count = unread.reduce((sum, item) => sum + item.unreadCount, 0);
-  useInboxRealtime(
-    (conversations.data?.items ?? []).map((item) => item.id),
-    () => void queryClient.invalidateQueries({ queryKey: ["conversations"] }),
-  );
   function select(item: Conversation) {
-    queryClient.setQueryData<PageResponse<Conversation>>(
-      ["conversations"],
-      (current) =>
-        current
-          ? {
-              ...current,
-              items: current.items.map((value) =>
-                value.id === item.id ? { ...value, unreadCount: 0 } : value,
-              ),
-            }
-          : current,
-    );
     onSelect();
     navigate(`/chat/${item.id}`);
   }

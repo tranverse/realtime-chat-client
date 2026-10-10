@@ -65,7 +65,7 @@ export function ChatConversation({
 
   const conversation = useQuery({
     queryKey: ["conversation", conversationId],
-    queryFn: () => conversationApi.detail(conversationId),
+    queryFn: ({ signal }) => conversationApi.detail(conversationId, signal),
   });
   const history = useInfiniteQuery({
     queryKey: ["messages", conversationId],
@@ -104,6 +104,10 @@ export function ChatConversation({
         return;
       }
       if (event.type === "MESSAGES_READ") {
+        void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["conversation", conversationId],
+        });
         setReadSequences((current) => ({
           ...current,
           [event.actorUserId]: Math.max(
@@ -126,6 +130,7 @@ export function ChatConversation({
   );
 
   const onRealtimeConnected = useCallback(() => {
+    lastReadRef.current = null;
     void queryClient.invalidateQueries({
       queryKey: ["messages", conversationId],
     });
@@ -138,7 +143,10 @@ export function ChatConversation({
   const realtime = useConversationRealtime(
     conversationId,
     onRealtimeEvent,
-    (error) => toast.error(error.message),
+    (error) => {
+      lastReadRef.current = null;
+      toast.error(error.message);
+    },
     onRealtimeConnected,
   );
   useEffect(() => {
@@ -186,7 +194,6 @@ export function ChatConversation({
   useEffect(() => {
     if (
       !newest ||
-      newest.sender.id === user?.id ||
       lastReadRef.current === newest.id ||
       !canMarkConversationRead(
         isNearBottom,
@@ -197,8 +204,27 @@ export function ChatConversation({
       return;
     lastReadRef.current = newest.id;
     if (!realtime.sendRead(newest.id))
-      void messageApi.markRead(conversationId, newest.id);
-  }, [conversationId, isNearBottom, newest, pageIsActive, realtime, user?.id]);
+      void messageApi
+        .markRead(conversationId, newest.id)
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          void queryClient.invalidateQueries({
+            queryKey: ["conversation", conversationId],
+          });
+        })
+        .catch((error: unknown) => {
+          lastReadRef.current = null;
+          toast.error(getErrorMessage(error));
+        });
+  }, [
+    conversationId,
+    isNearBottom,
+    newest,
+    pageIsActive,
+    realtime,
+    user?.id,
+    queryClient,
+  ]);
 
   useEffect(() => {
     const updatePageActivity = () =>
@@ -253,7 +279,7 @@ export function ChatConversation({
 
   if (conversation.isLoading || history.isLoading)
     return <Spinner label="Opening conversation…" className="stage-spinner" />;
-  if (!conversation.data)
+  if (!conversation.data || conversation.isError)
     return (
       <EmptyState
         icon={<WifiOff size={26} />}
@@ -299,12 +325,25 @@ export function ChatConversation({
           <p
             className={`mt-0.5 flex items-center gap-1 text-xs ${connectionNotice !== "hidden" ? "text-amber-600" : "text-slate-500"}`}
           >
-            {connectionNotice === "offline" ? <WifiOff size={11} /> : connectionNotice === "reconnecting" ? <Wifi size={11} /> : null}
-            {typingNames.length
-              ? `${typingNames.join(", ")} typing…`
-              : connectionNotice !== "hidden"
-                ? connectionNotice === "reconnecting" ? "Reconnecting…" : "Connection lost"
-                : <ConversationPresence conversation={conversation.data} currentUserId={user?.id} />}
+            {connectionNotice === "offline" ? (
+              <WifiOff size={11} />
+            ) : connectionNotice === "reconnecting" ? (
+              <Wifi size={11} />
+            ) : null}
+            {typingNames.length ? (
+              `${typingNames.join(", ")} typing…`
+            ) : connectionNotice !== "hidden" ? (
+              connectionNotice === "reconnecting" ? (
+                "Reconnecting…"
+              ) : (
+                "Connection lost"
+              )
+            ) : (
+              <ConversationPresence
+                conversation={conversation.data}
+                currentUserId={user?.id}
+              />
+            )}
           </p>
         </div>
         <Button
@@ -398,11 +437,14 @@ export function ChatConversation({
         onTyping={realtime.sendTyping}
         disabled={history.isError}
       />
-      <ConversationDetailsModal
-        conversation={conversation.data}
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-      />
+      {detailsOpen && (
+        <ConversationDetailsModal
+          key={conversationId}
+          conversation={conversation.data}
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+        />
+      )}
       <DeleteMessageDialog
         message={deleteTarget}
         deleting={remove.isPending}

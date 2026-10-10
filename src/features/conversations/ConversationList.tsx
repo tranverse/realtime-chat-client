@@ -23,7 +23,7 @@ export function ConversationList({ onCreate }: { onCreate: () => void }) {
   const [filter, setFilter] = useState<ConversationFilter>("all");
   const conversations = useQuery({
     queryKey: ["conversations"],
-    queryFn: () => conversationApi.list(),
+    queryFn: ({ signal }) => conversationApi.list(0, 30, signal),
   });
   const items = useMemo(
     () =>
