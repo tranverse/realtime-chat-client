@@ -20,15 +20,16 @@ export interface CreateConversationPayload {
 }
 
 export const conversationApi = {
-  async list(page = 0, size = 30) {
+  async list(page = 0, size = 30, signal?: AbortSignal) {
     const { data } = await apiClient.get<
       ApiResponse<PageResponse<Conversation>>
-    >("/conversations", { params: { page, size } });
+    >("/conversations", { params: { page, size }, signal });
     return data.data;
   },
-  async detail(id: string) {
+  async detail(id: string, signal?: AbortSignal) {
     const { data } = await apiClient.get<ApiResponse<Conversation>>(
       `/conversations/${id}`,
+      { signal },
     );
     return data.data;
   },

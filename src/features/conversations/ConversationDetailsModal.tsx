@@ -5,11 +5,9 @@ import {
   Crown,
   Link2,
   LogOut,
-  Search,
   ShieldCheck,
   TriangleAlert,
   UserMinus,
-  UserPlus,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -20,11 +18,10 @@ import { AvatarUpload } from "../../components/ui/AvatarUpload";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Modal } from "../../components/ui/Modal";
-import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../lib/errors";
 import type { Conversation, InviteLink, MemberRole } from "../../types/api";
 import { useAuth } from "../auth/useAuth";
-import { userApi } from "../profile/userApi";
+import { MemberPicker } from "./MemberPicker";
 import { conversationApi } from "./conversationApi";
 import {
   getConversationName,
@@ -43,12 +40,18 @@ export function ConversationDetailsModal({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [name, setName] = useState(conversation.name ?? "");
-  const [avatar, setAvatar] = useState(conversation.avatar ?? "");
-  const [memberSearch, setMemberSearch] = useState("");
+  const [nameDraft, setName] = useState<string | null>(null);
+  const [avatarDraft, setAvatar] = useState<string | null>(null);
+  const name = nameDraft ?? conversation.name ?? "";
+  const avatar = avatarDraft ?? conversation.avatar ?? "";
   const [invite, setInvite] = useState<InviteLink | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const debouncedSearch = useDebouncedValue(memberSearch);
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    description: string;
+    operation: () => Promise<unknown>;
+    success: string;
+  } | null>(null);
   const canManage =
     conversation.myRole === "OWNER" || conversation.myRole === "ADMIN";
 
@@ -58,6 +61,9 @@ export function ConversationDetailsModal({
         queryKey: ["conversation", conversation.id],
       }),
       queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["join-requests", conversation.id],
+      }),
     ]);
   };
   const action = useMutation({
@@ -65,38 +71,35 @@ export function ConversationDetailsModal({
     onSuccess: refresh,
     onError: (error) => toast.error(getErrorMessage(error)),
   });
-  const users = useQuery({
-    queryKey: ["users", "member-search", debouncedSearch],
-    queryFn: () => userApi.search(debouncedSearch),
-    enabled: open && canManage && debouncedSearch.length > 1,
-  });
   const requests = useQuery({
     queryKey: ["join-requests", conversation.id],
     queryFn: () => conversationApi.joinRequests(conversation.id),
     enabled: open && canManage && conversation.type === "GROUP",
   });
 
-  async function createInvite() {
-    try {
+  function createInvite() {
+    action.mutate(async () => {
       const created = await conversationApi.createInvite(
         conversation.id,
         true,
         72,
       );
       setInvite(created);
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/invite/${created.code}`,
-      );
-      toast.success("Invite link copied to your clipboard.");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
+      toast.success("Invite link created. Use Copy invite to share it.");
+    });
   }
 
   function updateRole(memberId: string, role: MemberRole) {
-    action.mutate(() =>
-      conversationApi.updateRole(conversation.id, memberId, role),
-    );
+    setConfirmation({
+      title: "Change member role?",
+      description:
+        role === "ADMIN"
+          ? "Admins can manage members and group settings."
+          : "This member will lose admin permissions.",
+      operation: () =>
+        conversationApi.updateRole(conversation.id, memberId, role),
+      success: "Member role updated.",
+    });
   }
 
   const activeMembers =
@@ -105,13 +108,15 @@ export function ConversationDetailsModal({
   return (
     <>
       <Modal
-        open={open && !leaveConfirmOpen}
-        onClose={onClose}
+        open={open && !leaveConfirmOpen && !confirmation}
+        onClose={() => {
+          if (!action.isPending) onClose();
+        }}
         title="Conversation details"
         description="Members, permissions, and invitation settings."
         wide
       >
-        <div className="details-stack">
+        <div className="details-stack group-details">
           <section className="details-identity">
             <Avatar
               name={getConversationName(conversation, user?.id)}
@@ -136,7 +141,12 @@ export function ConversationDetailsModal({
                 </div>
               </div>
               <div className="space-y-4">
-                <AvatarUpload name={name || getConversationName(conversation, user?.id)} value={avatar} onChange={setAvatar} disabled={action.isPending} />
+                <AvatarUpload
+                  name={name || getConversationName(conversation, user?.id)}
+                  value={avatar}
+                  onChange={setAvatar}
+                  disabled={action.isPending}
+                />
                 <FormField
                   label="Group name"
                   maxLength={50}
@@ -149,7 +159,17 @@ export function ConversationDetailsModal({
                 loading={action.isPending}
                 onClick={() =>
                   action.mutate(() =>
-                    conversationApi.update(conversation.id, { name, avatar }),
+                    conversationApi
+                      .update(conversation.id, { name, avatar })
+                      .then((updated) => {
+                        queryClient.setQueryData(
+                          ["conversation", conversation.id],
+                          updated,
+                        );
+                        toast.success("Group profile saved.");
+                        setName(null);
+                        setAvatar(null);
+                      }),
                   )
                 }
               >
@@ -169,7 +189,8 @@ export function ConversationDetailsModal({
                   size="sm"
                   variant="secondary"
                   leftIcon={<Link2 size={14} />}
-                  onClick={() => void createInvite()}
+                  onClick={createInvite}
+                  disabled={action.isPending}
                 >
                   Create link
                 </Button>
@@ -181,9 +202,16 @@ export function ConversationDetailsModal({
                     size="icon"
                     variant="ghost"
                     onClick={() =>
-                      void navigator.clipboard.writeText(
-                        `${window.location.origin}/invite/${invite.code}`,
-                      )
+                      void navigator.clipboard
+                        .writeText(
+                          `${window.location.origin}/invite/${invite.code}`,
+                        )
+                        .then(() => toast.success("Invite link copied."))
+                        .catch(() =>
+                          toast.error(
+                            "Could not copy. Select and copy the link manually.",
+                          ),
+                        )
                     }
                   >
                     Copy invite
@@ -193,58 +221,48 @@ export function ConversationDetailsModal({
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      void conversationApi.revokeInvite(
-                        conversation.id,
-                        invite.id,
-                      );
-                      setInvite(null);
+                      setConfirmation({
+                        title: "Revoke this invite link?",
+                        description:
+                          "People will no longer be able to use this link.",
+                        operation: async () => {
+                          await conversationApi.revokeInvite(
+                            conversation.id,
+                            invite.id,
+                          );
+                          setInvite(null);
+                        },
+                        success: "Invite link revoked.",
+                      });
                     }}
+                    disabled={action.isPending}
                   >
                     Revoke invite
                     <X size={15} />
                   </Button>
                 </div>
               )}
-              <label className="member-search">
-                <Search size={15} />
-                <input
-                  placeholder="Search people to add…"
-                  value={memberSearch}
-                  onChange={(event) => setMemberSearch(event.target.value)}
-                />
-              </label>
-              {users.data && (
-                <div className="member-results">
-                  {users.data.items
-                    .filter(
-                      (candidate) =>
-                        !activeMembers.some(
-                          (member) => member.user.id === candidate.id,
-                        ),
-                    )
-                    .slice(0, 5)
-                    .map((candidate) => (
-                      <button
-                        key={candidate.id}
-                        onClick={() =>
-                          action.mutate(() =>
-                            conversationApi.addMembers(conversation.id, [
-                              candidate.id,
-                            ]),
-                          )
-                        }
-                      >
-                        <Avatar
-                          name={candidate.name}
-                          src={candidate.avatar}
-                          size="xs"
-                        />
-                        <span>{candidate.name}</span>
-                        <UserPlus size={14} />
-                      </button>
-                    ))}
-                </div>
-              )}
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <h4 className="mb-1 text-sm font-semibold text-slate-900">
+                  Add people directly
+                </h4>
+                <p className="mb-3 text-xs text-slate-500">
+                  Select people first, then confirm with Add members.
+                </p>
+                {open && (
+                  <MemberPicker
+                    memberIds={activeMembers.map((member) => member.user.id)}
+                    pending={action.isPending}
+                    onAdd={(ids, done) =>
+                      action.mutate(async () => {
+                        await conversationApi.addMembers(conversation.id, ids);
+                        toast.success("Group updated successfully.");
+                        done();
+                      })
+                    }
+                  />
+                )}
+              </div>
             </section>
           )}
 
@@ -291,6 +309,7 @@ export function ConversationDetailsModal({
                       <div className="member-actions">
                         {conversation.myRole === "OWNER" && (
                           <select
+                            disabled={action.isPending}
                             aria-label={`Role for ${member.user.name}`}
                             value={member.role}
                             onChange={(event) =>
@@ -309,13 +328,18 @@ export function ConversationDetailsModal({
                             size="icon"
                             variant="ghost"
                             onClick={() =>
-                              action.mutate(() =>
-                                conversationApi.transferOwnership(
-                                  conversation.id,
-                                  member.user.id,
-                                ),
-                              )
+                              setConfirmation({
+                                title: "Transfer ownership?",
+                                description: `${member.user.name} will become the owner. You will become an admin and lose owner-only controls.`,
+                                operation: () =>
+                                  conversationApi.transferOwnership(
+                                    conversation.id,
+                                    member.user.id,
+                                  ),
+                                success: "Ownership transferred.",
+                              })
                             }
+                            disabled={action.isPending}
                           >
                             Transfer ownership
                             <Crown size={14} />
@@ -324,13 +348,22 @@ export function ConversationDetailsModal({
                         <Button
                           size="icon"
                           variant="ghost"
+                          disabled={
+                            action.isPending ||
+                            (conversation.myRole === "ADMIN" &&
+                              member.role === "ADMIN")
+                          }
                           onClick={() =>
-                            action.mutate(() =>
-                              conversationApi.removeMember(
-                                conversation.id,
-                                member.user.id,
-                              ),
-                            )
+                            setConfirmation({
+                              title: "Remove this member?",
+                              description: `${member.user.name} will lose access to this group.`,
+                              operation: () =>
+                                conversationApi.removeMember(
+                                  conversation.id,
+                                  member.user.id,
+                                ),
+                              success: "Member removed.",
+                            })
                           }
                         >
                           Remove member
@@ -344,6 +377,26 @@ export function ConversationDetailsModal({
             </div>
           </section>
 
+          {canManage && requests.isError && (
+            <div
+              role="alert"
+              className="rounded-xl bg-red-50 p-4 text-sm text-red-700"
+            >
+              Join requests could not be loaded.
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void requests.refetch()}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+          {canManage && requests.isLoading && (
+            <p role="status" className="text-sm text-slate-500">
+              Loading join requests…
+            </p>
+          )}
           {canManage && requests.data && requests.data.length > 0 && (
             <section className="details-section">
               <div className="details-section__heading">
@@ -367,6 +420,7 @@ export function ConversationDetailsModal({
                     <Button
                       size="icon"
                       variant="ghost"
+                      disabled={action.isPending}
                       onClick={() =>
                         action.mutate(async () => {
                           await conversationApi.reviewJoinRequest(
@@ -374,6 +428,7 @@ export function ConversationDetailsModal({
                             request.id,
                             false,
                           );
+                          toast.success("Join request rejected.");
                           await requests.refetch();
                         })
                       }
@@ -383,6 +438,7 @@ export function ConversationDetailsModal({
                     </Button>
                     <Button
                       size="icon"
+                      disabled={action.isPending}
                       onClick={() =>
                         action.mutate(async () => {
                           await conversationApi.reviewJoinRequest(
@@ -390,6 +446,7 @@ export function ConversationDetailsModal({
                             request.id,
                             true,
                           );
+                          toast.success("Join request approved.");
                           await requests.refetch();
                         })
                       }
@@ -413,6 +470,7 @@ export function ConversationDetailsModal({
                 variant="danger"
                 leftIcon={<LogOut size={15} />}
                 onClick={() => setLeaveConfirmOpen(true)}
+                disabled={action.isPending}
               >
                 Leave group
               </Button>
@@ -422,13 +480,16 @@ export function ConversationDetailsModal({
       </Modal>
       <Modal
         open={open && leaveConfirmOpen}
-        onClose={() => setLeaveConfirmOpen(false)}
+        onClose={() => {
+          if (!action.isPending) setLeaveConfirmOpen(false);
+        }}
         title="Leave this group?"
         description="This action removes you from the conversation."
         footer={
           <>
             <Button
               variant="secondary"
+              disabled={action.isPending}
               onClick={() => setLeaveConfirmOpen(false)}
             >
               Cancel
@@ -440,6 +501,7 @@ export function ConversationDetailsModal({
               onClick={() =>
                 action.mutate(async () => {
                   await conversationApi.leave(conversation.id);
+                  toast.success("You left the group.");
                   setLeaveConfirmOpen(false);
                   onClose();
                   navigate("/");
@@ -464,6 +526,44 @@ export function ConversationDetailsModal({
             </p>
           </div>
         </div>
+      </Modal>
+      <Modal
+        open={open && !!confirmation}
+        onClose={() => {
+          if (!action.isPending) setConfirmation(null);
+        }}
+        title={confirmation?.title ?? "Confirm action"}
+        description={confirmation?.description}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={action.isPending}
+              onClick={() => setConfirmation(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={action.isPending}
+              onClick={() => {
+                if (!confirmation) return;
+                const current = confirmation;
+                action.mutate(current.operation, {
+                  onSuccess: () => {
+                    toast.success(current.success);
+                    setConfirmation(null);
+                  },
+                });
+              }}
+            >
+              Confirm
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          Only confirm if you intend to make this change.
+        </p>
       </Modal>
     </>
   );

@@ -142,7 +142,7 @@ export function MessageComposer({
   }
 
   return (
-    <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-3 sm:px-5 sm:pb-4">
+    <div className="shrink-0 border-t border-slate-200 bg-white">
       {replyingTo && (
         <div className="mx-auto flex max-w-5xl items-center gap-3 border-b border-slate-100 px-2 py-2 text-sm">
           <RefreshCw className="text-indigo-500" size={16} />
@@ -187,7 +187,7 @@ export function MessageComposer({
         </div>
       )}
       <form
-        className="mx-auto mt-2 flex max-w-5xl items-end gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+        className={`flex w-full items-end gap-1 bg-slate-50 p-1.5 focus-within:bg-slate-100 ${replyingTo || failedImages.length > 0 ? "mt-2" : ""}`}
         onSubmit={submit}
       >
         <input

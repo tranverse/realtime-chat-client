@@ -38,6 +38,7 @@ import {
 } from "./readReceipts";
 import { useConversationRealtime } from "./useConversationRealtime";
 import { useMessageScroll } from "./useMessageScroll";
+import { useReplyNavigation } from "./useReplyNavigation";
 import { DeleteMessageDialog } from "./DeleteMessageDialog";
 
 export function ChatConversation({
@@ -62,10 +63,11 @@ export function ChatConversation({
   const lastReadRef = useRef<string | null>(null);
   const connectionLostSince = useRef<number | null>(null);
   const typingTimers = useRef(new Map<string, number>());
+  const messageHistoryRef = useRef<HTMLDivElement | null>(null);
 
   const conversation = useQuery({
     queryKey: ["conversation", conversationId],
-    queryFn: () => conversationApi.detail(conversationId),
+    queryFn: ({ signal }) => conversationApi.detail(conversationId, signal),
   });
   const history = useInfiniteQuery({
     queryKey: ["messages", conversationId],
@@ -104,6 +106,10 @@ export function ChatConversation({
         return;
       }
       if (event.type === "MESSAGES_READ") {
+        void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["conversation", conversationId],
+        });
         setReadSequences((current) => ({
           ...current,
           [event.actorUserId]: Math.max(
@@ -117,6 +123,10 @@ export function ChatConversation({
         ["messages", conversationId],
         (current) => applyMessageEvent(current, event),
       );
+      if (event.type === "MESSAGE_DELETED")
+        void queryClient.invalidateQueries({
+          queryKey: ["reply-history", conversationId],
+        });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({
         queryKey: ["conversation", conversationId],
@@ -126,6 +136,10 @@ export function ChatConversation({
   );
 
   const onRealtimeConnected = useCallback(() => {
+    lastReadRef.current = null;
+    void queryClient.invalidateQueries({
+      queryKey: ["reply-history", conversationId],
+    });
     void queryClient.invalidateQueries({
       queryKey: ["messages", conversationId],
     });
@@ -138,7 +152,10 @@ export function ChatConversation({
   const realtime = useConversationRealtime(
     conversationId,
     onRealtimeEvent,
-    (error) => toast.error(error.message),
+    (error) => {
+      lastReadRef.current = null;
+      toast.error(error.message);
+    },
     onRealtimeConnected,
   );
   useEffect(() => {
@@ -162,14 +179,20 @@ export function ChatConversation({
       window.clearTimeout(offlineTimer);
     };
   }, [realtime.status]);
-  const messages = useMemo(
+  const latestMessages = useMemo(
     () =>
       (history.data?.pages.flatMap((page) => page.items) ?? []).sort(
         (a, b) => a.sequence - b.sequence,
       ),
     [history.data],
   );
-  const newest = messages.at(-1);
+  const replyNavigation = useReplyNavigation(
+    conversationId,
+    latestMessages,
+    messageHistoryRef,
+  );
+  const messages = replyNavigation.messages;
+  const newest = latestMessages.at(-1);
   const latestOwnMessageId = messages.findLast(
     (message) => message.sender.id === user?.id,
   )?.id;
@@ -181,12 +204,17 @@ export function ChatConversation({
     handleScroll,
     scrollToBottom,
     loadOlderPreservingPosition,
-  } = useMessageScroll(newest?.id, newest?.sender.id === user?.id);
+  } = useMessageScroll(
+    newest?.id,
+    newest?.sender.id === user?.id,
+    replyNavigation.pauseAutoScroll,
+    messageHistoryRef,
+  );
 
   useEffect(() => {
     if (
       !newest ||
-      newest.sender.id === user?.id ||
+      replyNavigation.pauseAutoScroll ||
       lastReadRef.current === newest.id ||
       !canMarkConversationRead(
         isNearBottom,
@@ -197,8 +225,28 @@ export function ChatConversation({
       return;
     lastReadRef.current = newest.id;
     if (!realtime.sendRead(newest.id))
-      void messageApi.markRead(conversationId, newest.id);
-  }, [conversationId, isNearBottom, newest, pageIsActive, realtime, user?.id]);
+      void messageApi
+        .markRead(conversationId, newest.id)
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          void queryClient.invalidateQueries({
+            queryKey: ["conversation", conversationId],
+          });
+        })
+        .catch((error: unknown) => {
+          lastReadRef.current = null;
+          toast.error(getErrorMessage(error));
+        });
+  }, [
+    conversationId,
+    isNearBottom,
+    newest,
+    pageIsActive,
+    realtime,
+    user?.id,
+    queryClient,
+    replyNavigation.pauseAutoScroll,
+  ]);
 
   useEffect(() => {
     const updatePageActivity = () =>
@@ -222,11 +270,6 @@ export function ChatConversation({
     [],
   );
 
-  const edit = useMutation({
-    mutationFn: ({ id, content }: { id: string; content: string }) =>
-      messageApi.edit(id, content),
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
   const remove = useMutation({
     mutationFn: (id: string) => messageApi.remove(id),
     onSuccess: () => setDeleteTarget(null),
@@ -234,9 +277,13 @@ export function ChatConversation({
   });
 
   async function send(payload: CreateMessagePayload) {
-    if (realtime.sendMessage(payload)) return;
+    if (realtime.sendMessage(payload)) {
+      replyNavigation.returnToLatest();
+      return;
+    }
     try {
       const created = await messageApi.send(conversationId, payload);
+      replyNavigation.returnToLatest();
       onRealtimeEvent({
         type: "MESSAGE_CREATED",
         conversationId,
@@ -253,7 +300,7 @@ export function ChatConversation({
 
   if (conversation.isLoading || history.isLoading)
     return <Spinner label="Opening conversation…" className="stage-spinner" />;
-  if (!conversation.data)
+  if (!conversation.data || conversation.isError)
     return (
       <EmptyState
         icon={<WifiOff size={26} />}
@@ -299,12 +346,25 @@ export function ChatConversation({
           <p
             className={`mt-0.5 flex items-center gap-1 text-xs ${connectionNotice !== "hidden" ? "text-amber-600" : "text-slate-500"}`}
           >
-            {connectionNotice === "offline" ? <WifiOff size={11} /> : connectionNotice === "reconnecting" ? <Wifi size={11} /> : null}
-            {typingNames.length
-              ? `${typingNames.join(", ")} typing…`
-              : connectionNotice !== "hidden"
-                ? connectionNotice === "reconnecting" ? "Reconnecting…" : "Connection lost"
-                : <ConversationPresence conversation={conversation.data} currentUserId={user?.id} />}
+            {connectionNotice === "offline" ? (
+              <WifiOff size={11} />
+            ) : connectionNotice === "reconnecting" ? (
+              <Wifi size={11} />
+            ) : null}
+            {typingNames.length ? (
+              `${typingNames.join(", ")} typing…`
+            ) : connectionNotice !== "hidden" ? (
+              connectionNotice === "reconnecting" ? (
+                "Reconnecting…"
+              ) : (
+                "Connection lost"
+              )
+            ) : (
+              <ConversationPresence
+                conversation={conversation.data}
+                currentUserId={user?.id}
+              />
+            )}
           </p>
         </div>
         <Button
@@ -317,19 +377,48 @@ export function ChatConversation({
         </Button>
       </header>
       <div
-        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-5 sm:px-6"
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 pt-5 pb-3 sm:px-6"
         ref={historyRef}
         onScroll={handleScroll}
       >
-        {history.hasNextPage && (
+        {replyNavigation.browsingHistory && (
+          <div className="sticky top-0 z-20 mb-4 flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-white p-3 text-xs shadow-sm">
+            <span>Viewing earlier messages</span>
+            <Button
+              size="sm"
+              onClick={() => {
+                replyNavigation.returnToLatest();
+                requestAnimationFrame(() => scrollToBottom());
+              }}
+            >
+              Return to latest
+            </Button>
+          </div>
+        )}
+        {replyNavigation.navigating && (
+          <p role="status" className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-center text-xs text-slate-500 shadow-sm">
+            Finding original message…
+          </p>
+        )}
+        {(replyNavigation.browsingHistory
+          ? replyNavigation.context.hasPreviousPage
+          : history.hasNextPage) && (
           <div className="mb-5 flex justify-center">
             <Button
               size="sm"
               variant="secondary"
-              loading={history.isFetchingNextPage}
+              loading={
+                replyNavigation.browsingHistory
+                  ? replyNavigation.context.isFetching
+                  : history.isFetchingNextPage
+              }
               leftIcon={<ArrowDown size={14} />}
               onClick={() =>
-                void loadOlderPreservingPosition(history.fetchNextPage)
+                void loadOlderPreservingPosition(
+                  replyNavigation.browsingHistory
+                    ? replyNavigation.context.fetchPreviousPage
+                    : history.fetchNextPage,
+                )
               }
             >
               Load older messages
@@ -366,13 +455,29 @@ export function ChatConversation({
                   : null
               }
               onReply={() => setReplyingTo(message)}
-              onEdit={(content) => edit.mutate({ id: message.id, content })}
+              onNavigateReply={replyNavigation.navigateTo}
+              highlighted={replyNavigation.highlightId === message.id}
               onDelete={() => setDeleteTarget(message)}
             />
           ))}
-          <div ref={bottomRef} />
+          {replyNavigation.browsingHistory &&
+            replyNavigation.context.hasNextPage && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={replyNavigation.context.isFetching}
+                onClick={() =>
+                  void replyNavigation.context
+                    .fetchNextPage()
+                    .catch(() => toast.error("Could not load newer messages."))
+                }
+              >
+                Load newer messages
+              </Button>
+            )}
         </div>
-        {unseenMessages > 0 && (
+        <div ref={bottomRef} />
+        {!replyNavigation.browsingHistory && unseenMessages > 0 && (
           <Button
             className="sticky bottom-2 left-1/2 z-10 -translate-x-1/2 shadow-lg"
             size="sm"
@@ -383,14 +488,6 @@ export function ChatConversation({
           </Button>
         )}
       </div>
-      <div className="h-6 shrink-0 bg-white px-5 text-xs text-slate-400">
-        {typingNames.length > 0 && (
-          <span>
-            {typingNames.join(", ")} {typingNames.length === 1 ? "is" : "are"}{" "}
-            typing…
-          </span>
-        )}
-      </div>
       <MessageComposer
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
@@ -398,11 +495,14 @@ export function ChatConversation({
         onTyping={realtime.sendTyping}
         disabled={history.isError}
       />
-      <ConversationDetailsModal
-        conversation={conversation.data}
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-      />
+      {detailsOpen && (
+        <ConversationDetailsModal
+          key={conversationId}
+          conversation={conversation.data}
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+        />
+      )}
       <DeleteMessageDialog
         message={deleteTarget}
         deleting={remove.isPending}

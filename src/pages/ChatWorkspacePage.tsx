@@ -10,8 +10,10 @@ import { ProfileModal } from "../features/profile/ProfileModal";
 import { NotificationsPanel } from "../features/notifications/NotificationsPanel";
 import { SettingsPanel } from "../features/settings/SettingsPanel";
 import { useChatPreferences } from "../features/settings/preferences";
+import { useConversationSync } from "../features/conversations/useConversationSync";
 
 export function ChatWorkspacePage() {
+  useConversationSync();
   const { conversationId } = useParams();
   const [createOpen, setCreateOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -53,7 +55,10 @@ export function ChatWorkspacePage() {
             }
           >
             {conversationId ? (
-              <ChatConversation conversationId={conversationId} />
+              <ChatConversation
+                key={conversationId}
+                conversationId={conversationId}
+              />
             ) : (
               <EmptyState
                 icon={<MessageCircleHeart size={27} />}

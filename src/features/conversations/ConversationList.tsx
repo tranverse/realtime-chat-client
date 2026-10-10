@@ -5,6 +5,7 @@ import { NavLink } from "react-router-dom";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
+import { UnreadBadge } from "../../components/ui/UnreadBadge";
 import { cn } from "../../lib/cn";
 import { useAuth } from "../auth/useAuth";
 import { conversationApi } from "./conversationApi";
@@ -23,7 +24,7 @@ export function ConversationList({ onCreate }: { onCreate: () => void }) {
   const [filter, setFilter] = useState<ConversationFilter>("all");
   const conversations = useQuery({
     queryKey: ["conversations"],
-    queryFn: () => conversationApi.list(),
+    queryFn: ({ signal }) => conversationApi.list(0, 30, signal),
   });
   const items = useMemo(
     () =>
@@ -172,13 +173,7 @@ export function ConversationList({ onCreate }: { onCreate: () => void }) {
                   >
                     {lastMessageLabel(conversation, user)}
                   </small>
-                  {conversation.unreadCount > 0 && (
-                    <b className="grid min-w-5 place-items-center rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      {conversation.unreadCount > 99
-                        ? "99+"
-                        : conversation.unreadCount}
-                    </b>
-                  )}
+                  <UnreadBadge count={conversation.unreadCount} />
                 </span>
               </span>
             </NavLink>

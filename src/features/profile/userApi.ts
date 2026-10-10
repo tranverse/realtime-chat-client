@@ -7,10 +7,10 @@ import type {
 } from "../../types/api";
 
 export const userApi = {
-  async search(q: string, page = 0, size = 20) {
+  async search(q: string, page = 0, size = 20, signal?: AbortSignal) {
     const { data } = await apiClient.get<
       ApiResponse<PageResponse<UserSummary>>
-    >("/users/search", { params: { q, page, size } });
+    >("/users/search", { params: { q, page, size }, signal });
     return data.data;
   },
   async update(payload: {

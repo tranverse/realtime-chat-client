@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useRealtime } from "@/features/realtime/RealtimeProvider";
-import type { ChatEvent } from "@/types/api";
+import type { ChatEvent, TypingEvent } from "@/types/api";
 
 export function useInboxRealtime(
   conversationIds: string[],
-  onEvent: (event: ChatEvent) => void,
+  onEvent: (event: ChatEvent | TypingEvent) => void,
 ) {
   const { subscribe } = useRealtime();
   const onEventRef = useRef(onEvent);
@@ -18,7 +18,9 @@ export function useInboxRealtime(
           .split(",")
           .map((id) =>
             subscribe(`/topic/conversations/${id}`, (frame) =>
-              onEventRef.current(JSON.parse(frame.body) as ChatEvent),
+              onEventRef.current(
+                JSON.parse(frame.body) as ChatEvent | TypingEvent,
+              ),
             ),
           )
       : [];

@@ -398,9 +398,6 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
 }
 
 /* Realtime messaging */
-.message-edit { min-width: 260px; display: grid; grid-template-columns: 1fr auto auto; gap: 5px; }
-.message-edit input { min-width: 0; padding: 5px 7px; border: 0; border-radius: 6px; outline: 0; font-size: 12px; }
-.message-edit button { padding: 5px; color: inherit; background: transparent; border: 0; font-size: 9px; font-weight: 800; }
 .message-attachments { margin-top: 7px; display: grid; gap: 6px; }
 .image-grid { @apply grid max-w-[380px] gap-0.5 overflow-hidden rounded-xl; }
 .image-grid--1 { @apply grid-cols-1; }
@@ -498,4 +495,60 @@ h1, h2, h3 { font-family: 'Manrope', 'DM Sans', sans-serif; color: var(--ink-950
   .mobile-back { display: inline-flex; }
   .modal-backdrop { align-items: end; padding: 0; }
   .modal { width: 100%; max-height: 92dvh; border-radius: 24px 24px 0 0; }
+}
+
+/* Scoped group management layout. */
+.group-details .details-section {
+  padding: 20px;
+  gap: 16px;
+}
+.group-details .details-section h3,
+.group-details .danger-zone h3 {
+  font-size: 15px;
+}
+.group-details .details-section__heading p,
+.group-details .danger-zone p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.group-details .member-row {
+  padding: 12px 8px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.group-details .member-row strong {
+  font-size: 13px;
+}
+.group-details .member-row small {
+  font-size: 11px;
+  margin-top: 3px;
+}
+.group-details .role-badge {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+.group-details .member-actions {
+  gap: 4px;
+}
+.group-details .member-actions select {
+  width: 88px;
+  height: 36px;
+  font-size: 12px;
+}
+.group-details .member-actions select:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+.group-details .member-actions select:disabled {
+  opacity: 0.5;
+}
+@media (max-width: 540px) {
+  .group-details .member-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+  .group-details .details-section__heading,
+  .group-details .danger-zone {
+    flex-wrap: wrap;
+  }
 }
